@@ -1,4 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
+import 'package:magic_box/components.dart';
+import 'package:magic_box/service.dart';
+import 'package:magic_box/const.dart';
+
 import 'package:window_manager/window_manager.dart';
 
 void main() async {
@@ -11,7 +17,7 @@ void main() async {
   // 定义窗口选项配置
   WindowOptions windowOptions = const WindowOptions(
     minimumSize: Size(100, 60),
-    size: Size(600, 80), // 设置窗口大小为800x80
+    size: Size(WINDOW_WIDTH, 80), // 设置窗口大小为800x80
     center: true, // 窗口居中显示
     backgroundColor: Colors.transparent, // 窗口背景透明
     skipTaskbar: false, // 在任务栏显示窗口
@@ -23,6 +29,7 @@ void main() async {
     windowManager.focus(); // 窗口获取焦点
     windowManager.setAsFrameless();
     windowManager.setAlwaysOnTop(true);
+    windowManager.setResizable(false);
   });
 
   runApp(const MyApp());
@@ -35,9 +42,20 @@ class MyApp extends StatefulWidget {
   State<MyApp> createState() => _MyAppState();
 }
 
-bool is_more_spreadout = false;
-
 class _MyAppState extends State<MyApp> with WindowListener {
+  bool is_more_spreadout = false;
+  bool is_result_show = false;
+  String input_text = "";
+  List<ResultItemCard> result_items = [];
+
+  void getResults() async {
+    result_items = await getResultItems(input_text);
+    setState(() {
+      
+    });
+  }
+
+
   @override
   void initState() {
     super.initState();
@@ -62,6 +80,17 @@ class _MyAppState extends State<MyApp> with WindowListener {
 
   @override
   Widget build(BuildContext context) {
+    if (is_result_show) {
+      double height = 120;
+      //根据内容判断高度，最大500
+      height += result_items.length * 80;
+      if(height>500){
+        height = 500;
+      }
+      windowManager.setSize(Size(WINDOW_WIDTH, height));
+    } else {
+      windowManager.setSize(Size(WINDOW_WIDTH, 80));
+    }
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: ThemeData.dark(), // 使用暗色主题更易看清透明效果
@@ -73,83 +102,112 @@ class _MyAppState extends State<MyApp> with WindowListener {
           child: Center(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20.0),
-              child: Row(
+              child: Column(
                 children: [
-                  Expanded(
-                    child: TransparentSearchBox(),
-                  ), // 将TransparentSearchBox包裹在Expanded中
-                  SizedBox(width: 3),
-                  Container(
-                    padding: const EdgeInsets.all(4.0), // 添加内边距
-                    decoration: BoxDecoration(
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.5),
-                        width: 1.0,
-                      ),
-                      borderRadius: BorderRadius.circular(23),
-                    ),
-                    child: Row(
-                      children: [
-                        AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 150),
-                          transitionBuilder: (
-                            Widget child,
-                            Animation<double> animation,
-                          ) {
-                            return ScaleTransition(
-                              scale: animation,
-                              child: child,
-                            );
+                  Row(
+                    //输入框部分
+                    children: [
+                      Expanded(
+                        child: TransparentSearchBox(
+                          myAppState: this,
+
+                          onSearchSubmitted: (value) {
+                            if (value.isNotEmpty) {
+                              setState(() {
+                                is_result_show = true;
+                                input_text = value;
+                              });
+                            }
                           },
-                          child:
-                              !is_more_spreadout
-                                  ? IconButton(
-                                    key: const ValueKey<bool>(true),
-                                    onPressed: () {
-                                      is_more_spreadout = true;
-                                      setState(() {});
-                                    },
-                                    icon: const Icon(Icons.more_horiz),
-                                    style: IconButton.styleFrom(
-                                      backgroundColor: const Color.fromARGB(
-                                        255,
-                                        85,
-                                        85,
-                                        85,
-                                      ),
-                                      splashFactory: NoSplash.splashFactory,
-                                    ),
-                                  )
-                                  : Row(
-                                    key: const ValueKey<bool>(false),
-                                    children: [
-                                      IconButton(
+                          onTap: () {
+                            setState(() {
+                              is_more_spreadout = false;
+                            });
+                          },
+                        ),
+                      ), // 将TransparentSearchBox包裹在Expanded中
+                      SizedBox(width: 3),
+                      Container(
+                        padding: const EdgeInsets.all(4.0), // 添加内边距
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.5),
+                            width: 1.0,
+                          ),
+                          borderRadius: BorderRadius.circular(23),
+                        ),
+                        child: Row(
+                          children: [
+                            AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 150),
+                              transitionBuilder: (
+                                Widget child,
+                                Animation<double> animation,
+                              ) {
+                                return ScaleTransition(
+                                  scale: animation,
+                                  child: child,
+                                );
+                              },
+                              child:
+                                  !is_more_spreadout
+                                      ? IconButton(
+                                        key: const ValueKey<bool>(true),
                                         onPressed: () {
-                                          //打开设置
+                                          setState(() {
+                                            is_more_spreadout = true;
+                                          });
                                         },
-                                        icon: const Icon(Icons.settings),
-                                        style: IconButton.styleFrom(
-                                          backgroundColor: const Color.fromARGB(255, 47, 96, 129),
-                                          splashFactory: NoSplash.splashFactory,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 3),
-                                      IconButton(
-                                        onPressed: () {
-                                          windowManager.close();
-                                        },
-                                        icon: const Icon(Icons.close),
+                                        icon: const Icon(Icons.more_horiz),
                                         style: IconButton.styleFrom(
                                           backgroundColor: const Color.fromARGB(
                                             255,
-                                            129,
-                                            47,
-                                            47,
+                                            85,
+                                            85,
+                                            85,
                                           ),
                                           splashFactory: NoSplash.splashFactory,
                                         ),
-                                      ),
-                                      /*
+                                      )
+                                      : Row(
+                                        key: const ValueKey<bool>(false),
+                                        children: [
+                                          IconButton(
+                                            onPressed: () {
+                                              //打开设置
+                                            },
+                                            icon: const Icon(Icons.settings),
+                                            style: IconButton.styleFrom(
+                                              backgroundColor:
+                                                  const Color.fromARGB(
+                                                    255,
+                                                    47,
+                                                    96,
+                                                    129,
+                                                  ),
+                                              splashFactory:
+                                                  NoSplash.splashFactory,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 3),
+                                          IconButton(
+                                            onPressed: () {
+                                              windowManager.close();
+                                            },
+                                            icon: const Icon(Icons.close),
+                                            style: IconButton.styleFrom(
+                                              backgroundColor:
+                                                  const Color.fromARGB(
+                                                    255,
+                                                    129,
+                                                    47,
+                                                    47,
+                                                  ),
+                                              splashFactory:
+                                                  NoSplash.splashFactory,
+                                            ),
+                                          ),
+                                          /*
                                       const SizedBox(width: 3),
                                       IconButton(
                                         onPressed: () {
@@ -167,12 +225,23 @@ class _MyAppState extends State<MyApp> with WindowListener {
                                           splashFactory: NoSplash.splashFactory,
                                         ),
                                       ),*/
-                                    ],
-                                  ),
+                                        ],
+                                      ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
+                  if (is_result_show)
+                    Expanded(
+                      child: Column(
+                        children: [
+                          SizedBox(height: 10),
+                          Expanded(child: _build_result_view()),
+                        ],
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -181,10 +250,61 @@ class _MyAppState extends State<MyApp> with WindowListener {
       ),
     );
   }
+
+  Widget _build_result_view() {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color.fromARGB(232, 107, 107, 107),
+        borderRadius: BorderRadius.circular(15.0), // 添加圆角效果
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(10.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch, // 使子组件宽度占满
+          children: [
+            Row(
+              children: [
+                Text(
+                  "结果：",
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                ),
+                Expanded(child: SizedBox(width: 1,)),
+                IconButton(onPressed: (){
+                  setState(() {
+                    //TODO
+                  });
+                }, icon: Icon(Icons.replay)),
+                IconButton(onPressed: (){
+                  setState(() {
+                    is_result_show = false;
+                  });
+                }, icon: Icon(Icons.arrow_upward)),
+              ],
+            ),
+            Expanded(
+              child: ListView(
+                children: [
+                  ...result_items,
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class TransparentSearchBox extends StatefulWidget {
-  const TransparentSearchBox({super.key});
+  final _MyAppState myAppState;
+  final ValueChanged<String> onSearchSubmitted;
+  final VoidCallback onTap;
+
+  const TransparentSearchBox({
+    super.key,
+    required this.onSearchSubmitted,
+    required this.onTap, required this.myAppState,
+  });
 
   @override
   State<TransparentSearchBox> createState() => _TransparentSearchBoxState();
@@ -193,6 +313,31 @@ class TransparentSearchBox extends StatefulWidget {
 class _TransparentSearchBoxState extends State<TransparentSearchBox> {
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    _focusNode.addListener(_onFocusChanged);
+    // 在窗口加载时自动获取焦点
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _focusNode.requestFocus();
+    });
+  }
+
+  void _onFocusChanged() {
+    if (_focusNode.hasFocus) {
+      RawKeyboard.instance.addListener(_handleKeyEvent);
+    } else {
+      RawKeyboard.instance.removeListener(_handleKeyEvent);
+    }
+  }
+
+  void _handleKeyEvent(RawKeyEvent event) {
+    if (event is RawKeyDownEvent &&
+        event.logicalKey == LogicalKeyboardKey.escape) {
+      windowManager.close();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -210,6 +355,15 @@ class _TransparentSearchBoxState extends State<TransparentSearchBox> {
           ),
           Expanded(
             child: TextField(
+              onSubmitted: widget.onSearchSubmitted,
+              //当文字改变
+              onChanged: (value) {
+                widget.myAppState.setState(() {
+                  widget.myAppState.input_text= value;
+                  widget.myAppState.getResults();
+                });
+              },
+
               controller: _controller,
               focusNode: _focusNode,
               style: const TextStyle(color: Colors.white),
@@ -220,13 +374,7 @@ class _TransparentSearchBoxState extends State<TransparentSearchBox> {
                 contentPadding: EdgeInsets.symmetric(vertical: 16.0),
               ),
               cursorColor: Colors.white,
-              onTap: () {
-                // 由于is_more_spreadout是全局变量，需要调用父级widget的setState来刷新UI
-                setState(() {});
-                is_more_spreadout = false;
-                // 通知父级widget进行刷新
-                (context.findAncestorStateOfType<_MyAppState>())?.setState(() {});
-              },
+              onTap: widget.onTap,
             ),
           ),
           if (_controller.text.isNotEmpty)
@@ -242,7 +390,9 @@ class _TransparentSearchBoxState extends State<TransparentSearchBox> {
   @override
   void dispose() {
     _controller.dispose();
+    _focusNode.removeListener(_onFocusChanged);
     _focusNode.dispose();
+    RawKeyboard.instance.removeListener(_handleKeyEvent);
     super.dispose();
   }
 }
