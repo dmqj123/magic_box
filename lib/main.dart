@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'package:magic_box/components.dart';
+import 'package:magic_box/pages.dart';
 import 'package:magic_box/service.dart';
 import 'package:magic_box/const.dart';
 
@@ -178,6 +179,15 @@ class _MyAppState extends State<MyApp> with WindowListener {
                                           IconButton(
                                             onPressed: () {
                                               //打开设置
+                                              /*
+                                              Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (context) =>
+                                                      const SettingsPage(),
+                                                ),
+                                              );*/
+
                                             },
                                             icon: const Icon(Icons.settings),
                                             style: IconButton.styleFrom(

@@ -12,6 +12,15 @@ List<ResultItemCard> getResultItems(String query) {
       ),
     );
   }
+  if (query.length > 2) {
+    result_list.add(
+      ResultItemCard(
+        content: "搜索-Bing",
+        imageUrl:
+            "https://ts1.tc.mm.bing.net/th/id/OIP-C.wscQIcgzAsAL1AX2T4OCwQAAAA?rs=1&pid=ImgDetMain&o=7&rm=3",
+      ),
+    );
+  }
   if (query.contains("ro")) {
     result_list.add(
       ResultItemCard(
