@@ -87,6 +87,9 @@ class _MyAppState extends State<MyApp> with WindowListener {
       if(height>500){
         height = 500;
       }
+      if(result_items.length == 0){
+        height = 150;
+      }
       windowManager.setSize(Size(WINDOW_WIDTH, height));
     } else {
       windowManager.setSize(Size(WINDOW_WIDTH, 80));
@@ -272,6 +275,9 @@ class _MyAppState extends State<MyApp> with WindowListener {
                 IconButton(onPressed: (){
                   setState(() {
                     //TODO
+                    setState(() {
+                      getResults();
+                    });
                   });
                 }, icon: Icon(Icons.replay)),
                 IconButton(onPressed: (){
@@ -284,6 +290,8 @@ class _MyAppState extends State<MyApp> with WindowListener {
             Expanded(
               child: ListView(
                 children: [
+                  if(result_items.length == 0)
+                    Text("暂无结果"),
                   ...result_items,
                 ],
               ),
@@ -359,6 +367,7 @@ class _TransparentSearchBoxState extends State<TransparentSearchBox> {
               //当文字改变
               onChanged: (value) {
                 widget.myAppState.setState(() {
+                  widget.myAppState.is_result_show = true;
                   widget.myAppState.input_text= value;
                   widget.myAppState.getResults();
                 });

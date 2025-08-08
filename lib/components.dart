@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:magic_box/const.dart';
 
 class ResultItemCard extends StatefulWidget {
   final String content;
   final String? title;
   final String? imageUrl;
   final VoidCallback? onTap;
+  final String? preview_path;
 
   const ResultItemCard({
     Key? key,
     required this.content,
     this.title,
     this.imageUrl,
+    this.preview_path,
     this.onTap,
   }) : super(key: key);
 
@@ -47,7 +50,10 @@ class _ResultItemCardState extends State<ResultItemCard> {
     return Card(
       margin: const EdgeInsets.all(3.0),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15.0)),
-      color: (_hasFocus) ? const Color.fromARGB(255, 168, 168, 168) : Color.fromARGB(255, 233, 233, 233),
+      color:
+          (_hasFocus)
+              ? const Color.fromARGB(255, 168, 168, 168)
+              : Color.fromARGB(255, 233, 233, 233),
       elevation: 8,
       child: Focus(
         focusNode: _focusNode,
@@ -111,8 +117,22 @@ class _ResultItemCardState extends State<ResultItemCard> {
                     ],
                   ),
                 ),
-                if(_hasFocus)
-                  Center(child: Icon(Icons.keyboard_return, color: const Color.fromARGB(255, 83, 83, 83))),
+                if (widget.preview_path != null)
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8.0),
+                    child: Image.network(
+                      widget.preview_path!,
+                      width: WINDOW_WIDTH / 12,
+                      height: WINDOW_WIDTH / 12,
+                    ),
+                  ),
+                if (_hasFocus)
+                  Center(
+                    child: Icon(
+                      Icons.keyboard_return,
+                      color: const Color.fromARGB(255, 83, 83, 83),
+                    ),
+                  ),
               ],
             ),
           ),
