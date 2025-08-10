@@ -114,7 +114,8 @@ void searchDirectory(const std::string& path, const std::string& keyword) {
                     << "\"name\":\"" << escapeJsonString(filename) << "\","
                     << "\"path\":\"" << escapeJsonString(fullPath) << "\","
                     << "\"open_cmd\":\"" << escapeJsonString(openCmd) << "\""
-                    << "}\n";
+                    << "}\n"
+                    << "\nnext_result\n";
             }
         }
     } while (FindNextFileA(hFind, &findData));

@@ -1,20 +1,26 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:magic_box/const.dart';
 
 class ResultItemCard extends StatefulWidget {
   final String content;
   final String? title;
-  final String? imageUrl;
+  final String? image_path;
   final VoidCallback? onTap;
   final String? preview_path;
+  final String? cmd;
+
 
   const ResultItemCard({
     Key? key,
     required this.content,
     this.title,
-    this.imageUrl,
+    this.image_path,
     this.preview_path,
     this.onTap,
+    this.cmd,
+
   }) : super(key: key);
 
   @override
@@ -68,12 +74,12 @@ class _ResultItemCardState extends State<ResultItemCard> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (widget.imageUrl != null)
+                if (widget.image_path != null)
                   Padding(
                     padding: const EdgeInsets.only(right: 16.0),
                     child: ClipOval(
                       child: Image.network(
-                        widget.imageUrl!,
+                        widget.image_path!,
                         width: 25,
                         height: 25,
                         fit: BoxFit.cover,
@@ -120,8 +126,8 @@ class _ResultItemCardState extends State<ResultItemCard> {
                 if (widget.preview_path != null)
                   ClipRRect(
                     borderRadius: BorderRadius.circular(8.0),
-                    child: Image.network(
-                      widget.preview_path!,
+                    child: Image.file(
+                      File(widget.preview_path!),
                       width: WINDOW_WIDTH / 12,
                       height: WINDOW_WIDTH / 12,
                     ),

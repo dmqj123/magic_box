@@ -1,38 +1,85 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'components.dart';
+import 'class.dart';
 
-List<ResultItemCard> getResultItems(String query) {
+List<plugin> plugins = [
   //TEST
-  List<ResultItemCard> result_list = [];
-  if (query != "") {
-    result_list.add(
-      ResultItemCard(
-        content: "问Ai",
-        imageUrl:
-            "https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/6d/dd/58/6ddd5814-706a-9075-4e1e-00b65633a307/AppIcon-0-0-1x_U007epad-0-11-0-85-220.png/492x0w.webp",
-      ),
-    );
-  }
-  if (query.length > 2) {
-    result_list.add(
-      ResultItemCard(
-        content: "搜索-Bing",
-        imageUrl:
-            "https://ts1.tc.mm.bing.net/th/id/OIP-C.wscQIcgzAsAL1AX2T4OCwQAAAA?rs=1&pid=ImgDetMain&o=7&rm=3",
-      ),
-    );
-  }
-  if (query.contains("ro")) {
-    result_list.add(
-      ResultItemCard(
-        content: "C:\\Users\\abcdef\\Downloads\\robot.png",
-        title: "robot.png",
-        imageUrl:
-            "https://bpic.588ku.com/element_origin_min_pic/19/04/23/fce1a95fe111509e2717f2f02435a60b.jpg",
-        preview_path: "https://kooly.faistudio.top/material/icon.png",
+  plugin(
+    name: "FileSearch",
+    path:
+        "J:\\zzx\\Code\\Flutter\\magic_box\\plugins_dev\\FileSearch\\Debug\\FileSearch.exe",
+    version: "1.0.0",
+    icon_path: "C:\\Users\\abcdef\\Downloads\\robot.png",
+  ),
+];
 
-      ),
-    );
+Future<List<ResultItemCard>> getResultItems(String query) async {
+  List<ResultItemCard> result_list = [];
+  List<Future<List<ResultItemCard>?>> futures = [];
+
+  for (plugin item in plugins) {
+    futures.add(Future<List<ResultItemCard>?> (() async {
+      Process process = await Process.start("cmd", [
+        "/C " + item.path + " -k " + query,
+      ]);
+
+      final output =
+          await process.stdout.transform(systemEncoding.decoder).join();
+      final results = AddResultItemCardFromJson(output);
+
+      final exitCode = await process.exitCode;
+      print("${item.name}插件查询完成，退出码：$exitCode");
+      return results;
+    }));
+  }
+
+  List<List<ResultItemCard>?> allResults = await Future.wait(futures);
+
+  for (List<ResultItemCard>? results in allResults) {
+    if (results != null) {
+      result_list.addAll(results);
+    }
   }
 
   return result_list;
+}
+
+List<ResultItemCard>? AddResultItemCardFromJson(String jsonString) {
+  List<ResultItemCard> allResults = [];
+  List<String> json_list = jsonString.split("\nnext_result");
+
+  for (String json_item in json_list) {
+    if (json_item.trim().isEmpty) continue; // Skip empty strings
+
+    try {
+      final decodedJson = jsonDecode(json_item);
+
+      if (decodedJson is List) {
+        allResults.addAll(decodedJson.map<ResultItemCard>((item) {
+          return ResultItemCard(
+            title: item['name']?.toString() ?? '未命名',
+            content: item['path']?.toString() ?? '路径未知',
+            cmd: item['open_cmd']?.toString(),
+            image_path: item['icon_path']?.toString(),
+          );
+        }).toList());
+      } else if (decodedJson is Map<String, dynamic>) {
+        allResults.add(
+          ResultItemCard(
+            title: decodedJson['name']?.toString() ?? '未命名',
+            content: decodedJson['path']?.toString() ?? '路径未知',
+            cmd: decodedJson['open_cmd']?.toString(),
+            image_path: decodedJson['icon_path']?.toString(),
+          ),
+        );
+      } else {
+        print('JSON解析错误: 未知的JSON类型 - $json_item');
+      }
+    } catch (e) {
+      print('JSON解析错误: $e for input: $json_item');
+    }
+  }
+  return allResults.isNotEmpty ? allResults : null;
 }
