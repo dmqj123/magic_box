@@ -107,7 +107,7 @@ void searchDirectory(const std::string& path, const std::string& keyword) {
 
             if (lowerName.find(keyword) != std::string::npos) {
                 // 构造打开文件资源管理器的命令
-                std::string openCmd = "explorer.exe /select,\"" + fullPath + "\"";
+                std::string openCmd = "explorer.exe \"" + fullPath + "\"";
 
                 // 输出JSON格式结果
                 std::cout << "{"

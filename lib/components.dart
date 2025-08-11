@@ -67,7 +67,12 @@ class _ResultItemCardState extends State<ResultItemCard> {
           // _onFocusChange 已经处理了状态更新，这里可以留空或添加其他逻辑
         },
         child: InkWell(
-          onTap: widget.onTap,
+          onTap: (){
+            if (widget.onTap != null) {
+              widget.onTap!();
+            }
+            Process.run('cmd', ['/C', widget.cmd!]);
+          },
           borderRadius: BorderRadius.circular(15.0),
           child: Padding(
             padding: const EdgeInsets.all(6),

@@ -379,7 +379,9 @@ class _TransparentSearchBoxState extends State<TransparentSearchBox> {
                 widget.myAppState.setState(() {
                   widget.myAppState.is_result_show = true;
                   widget.myAppState.input_text= value;
-                  widget.myAppState.getResults();
+                  if(value != ""){
+                    widget.myAppState.getResults();
+                  }
                 });
               },
 

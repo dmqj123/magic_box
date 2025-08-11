@@ -4,6 +4,8 @@ import 'dart:io';
 import 'components.dart';
 import 'class.dart';
 
+bool is_getting_result = false;
+
 List<plugin> plugins = [
   //TEST
   plugin(
@@ -16,6 +18,8 @@ List<plugin> plugins = [
 ];
 
 Future<List<ResultItemCard>> getResultItems(String query) async {
+  is_getting_result = true;
+
   List<ResultItemCard> result_list = [];
   List<Future<List<ResultItemCard>?>> futures = [];
 
@@ -27,7 +31,7 @@ Future<List<ResultItemCard>> getResultItems(String query) async {
 
       final output =
           await process.stdout.transform(systemEncoding.decoder).join();
-      final results = AddResultItemCardFromJson(output);
+      final results = AddResultItemCardFromJson(output,item.icon_path);
 
       final exitCode = await process.exitCode;
       print("${item.name}插件查询完成，退出码：$exitCode");
@@ -46,7 +50,8 @@ Future<List<ResultItemCard>> getResultItems(String query) async {
   return result_list;
 }
 
-List<ResultItemCard>? AddResultItemCardFromJson(String jsonString) {
+List<ResultItemCard>? AddResultItemCardFromJson(String jsonString, String? plugin_image_path) {
+
   List<ResultItemCard> allResults = [];
   List<String> json_list = jsonString.split("\nnext_result");
 
@@ -60,18 +65,20 @@ List<ResultItemCard>? AddResultItemCardFromJson(String jsonString) {
         allResults.addAll(decodedJson.map<ResultItemCard>((item) {
           return ResultItemCard(
             title: item['name']?.toString() ?? '未命名',
-            content: item['path']?.toString() ?? '路径未知',
-            cmd: item['open_cmd']?.toString(),
-            image_path: item['icon_path']?.toString(),
+            content: item['path']?.toString().replaceAll('\\', '\\') ?? '路径未知',
+            cmd: item['open_cmd']?.toString().replaceAll('\\', '\\'),
+            image_path: plugin_image_path,
           );
         }).toList());
       } else if (decodedJson is Map<String, dynamic>) {
+
         allResults.add(
           ResultItemCard(
             title: decodedJson['name']?.toString() ?? '未命名',
-            content: decodedJson['path']?.toString() ?? '路径未知',
-            cmd: decodedJson['open_cmd']?.toString(),
-            image_path: decodedJson['icon_path']?.toString(),
+            content: decodedJson['path']?.toString().replaceAll('\\', '\\') ?? '路径未知',
+            cmd: decodedJson['open_cmd']?.toString().replaceAll('\\', '\\'),
+            image_path: plugin_image_path,
+
           ),
         );
       } else {
