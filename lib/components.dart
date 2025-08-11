@@ -71,7 +71,8 @@ class _ResultItemCardState extends State<ResultItemCard> {
             if (widget.onTap != null) {
               widget.onTap!();
             }
-            Process.run('cmd', ['/C', widget.cmd!]);
+            //Process.run('cmd', ['/C', widget.cmd!]);
+            Process.run('powershell', [widget.cmd!]);
           },
           borderRadius: BorderRadius.circular(15.0),
           child: Padding(
