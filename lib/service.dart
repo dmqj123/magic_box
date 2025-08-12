@@ -5,6 +5,7 @@ import 'components.dart';
 import 'class.dart';
 
 bool is_getting_result = false;
+List<Process> get_result_processes = [];
 
 List<plugin> plugins = [
   //TEST
@@ -17,17 +18,36 @@ List<plugin> plugins = [
   ),
 ];
 
+void killAllRunningProcesses() {
+  for (var process in get_result_processes) {
+    try {
+      process.kill();
+      print('进程 ${process.pid} 已被终止');
+    } catch (e) {
+      print('终止进程 ${process.pid} 失败: $e');
+    }
+  }
+  get_result_processes.clear(); // 清空列表
+}
+
 Future<List<ResultItemCard>> getResultItems(String query) async {
+  killAllRunningProcesses();
+
   is_getting_result = true;
 
   List<ResultItemCard> result_list = [];
-  List<Future<List<ResultItemCard>?>> futures = [];
+  List<Future<List<ResultItemCard>?>> get_results_futures = [];
 
   for (plugin item in plugins) {
-    futures.add(Future<List<ResultItemCard>?> (() async {
-      Process process = await Process.start("cmd", [
+    get_results_futures.add(Future<List<ResultItemCard>?> (() async {
+      get_result_processes.add(await Process.start("cmd", [
         "/C " + item.path + " -k " + query,
-      ]);
+      ]));
+      Process process = get_result_processes.last;
+
+      /*Process process = await Process.start("cmd", [
+        "/C " + item.path + " -k " + query,
+      ]);*/
 
       final output =
           await process.stdout.transform(systemEncoding.decoder).join();
@@ -39,7 +59,7 @@ Future<List<ResultItemCard>> getResultItems(String query) async {
     }));
   }
 
-  List<List<ResultItemCard>?> allResults = await Future.wait(futures);
+  List<List<ResultItemCard>?> allResults = await Future.wait(get_results_futures);
 
   for (List<ResultItemCard>? results in allResults) {
     if (results != null) {
