@@ -51,11 +51,8 @@ class _MyAppState extends State<MyApp> with WindowListener {
 
   void getResults() async {
     result_items = await getResultItems(input_text);
-    setState(() {
-      
-    });
+    setState(() {});
   }
-
 
   @override
   void initState() {
@@ -85,10 +82,10 @@ class _MyAppState extends State<MyApp> with WindowListener {
       double height = 120;
       //根据内容判断高度，最大500
       height += result_items.length * 80;
-      if(height>500){
+      if (height > 500) {
         height = 500;
       }
-      if(result_items.length == 0){
+      if (result_items.length == 0) {
         height = 150;
       }
       windowManager.setSize(Size(WINDOW_WIDTH, height));
@@ -187,7 +184,6 @@ class _MyAppState extends State<MyApp> with WindowListener {
                                                       const SettingsPage(),
                                                 ),
                                               );*/
-
                                             },
                                             icon: const Icon(Icons.settings),
                                             style: IconButton.styleFrom(
@@ -281,27 +277,39 @@ class _MyAppState extends State<MyApp> with WindowListener {
                   "结果：",
                   style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                 ),
-                Expanded(child: SizedBox(width: 1,)),
-                IconButton(onPressed: (){
-                  setState(() {
-                    //TODO
+                Expanded(child: SizedBox(width: 1)),
+                IconButton(
+                  onPressed: () {
                     setState(() {
-                      getResults();
+                      //TODO
+                      setState(() {
+                        getResults();
+                      });
                     });
-                  });
-                }, icon: Icon(Icons.replay)),
-                IconButton(onPressed: (){
-                  setState(() {
-                    is_result_show = false;
-                  });
-                }, icon: Icon(Icons.arrow_upward)),
+                  },
+                  icon:
+                      (is_getting_result)
+                          ? SizedBox(
+                              width: 23,
+                              height: 23,
+                              child: CircularProgressIndicator(),
+                            )
+                          : Icon(Icons.replay),
+                ),
+                IconButton(
+                  onPressed: () {
+                    setState(() {
+                      is_result_show = false;
+                    });
+                  },
+                  icon: Icon(Icons.arrow_upward),
+                ),
               ],
             ),
             Expanded(
               child: ListView(
                 children: [
-                  if(result_items.length == 0)
-                    Text("暂无结果"),
+                  if (result_items.length == 0) Text("暂无结果"),
                   ...result_items,
                 ],
               ),
@@ -321,7 +329,8 @@ class TransparentSearchBox extends StatefulWidget {
   const TransparentSearchBox({
     super.key,
     required this.onSearchSubmitted,
-    required this.onTap, required this.myAppState,
+    required this.onTap,
+    required this.myAppState,
   });
 
   @override
@@ -378,8 +387,8 @@ class _TransparentSearchBoxState extends State<TransparentSearchBox> {
               onChanged: (value) {
                 widget.myAppState.setState(() {
                   widget.myAppState.is_result_show = true;
-                  widget.myAppState.input_text= value;
-                  if(value != ""){
+                  widget.myAppState.input_text = value;
+                  if (value != "") {
                     widget.myAppState.getResults();
                   }
                 });

@@ -111,9 +111,9 @@ void searchDirectory(const std::string& path, const std::string& keyword) {
 
                 // 输出JSON格式结果
                 std::cout << "{"
-                    << "\"name\":\"" << escapeJsonString(filename) << "\","
-                    << "\"path\":\"" << escapeJsonString(fullPath) << "\","
-                    << "\"open_cmd\":\"" << escapeJsonString(openCmd) << "\""
+                    << "\"title\":\"" << escapeJsonString(filename) << "\","
+                    << "\"content\":\"" << escapeJsonString(fullPath) << "\","
+                    << "\"cmd\":\"" << escapeJsonString(openCmd) << "\""
                     << "}\n"
                     << "\nnext_result\n";
             }
@@ -131,6 +131,11 @@ int main(int argc, char* argv[]) {
     }
 
     std::string keyword = toLower(argv[2]);  // 获取并转换为小写关键字
+
+    // 如果关键字为空，则直接退出
+    if (keyword.empty()) {
+        return 0;
+    }
 
     // 定义要搜索的目录类型
     const std::vector<int> folderTypes = {

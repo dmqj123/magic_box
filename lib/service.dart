@@ -13,7 +13,7 @@ List<plugin> plugins = [
     path:
         "J:\\zzx\\Code\\Flutter\\magic_box\\plugins_dev\\FileSearch\\Debug\\FileSearch.exe",
     version: "1.0.0",
-    icon_path: "C:\\Users\\abcdef\\Downloads\\robot.png",
+    //icon_path: "C:\\Users\\abcdef\\Downloads\\robot.png",
   ),
 ];
 
@@ -46,7 +46,7 @@ Future<List<ResultItemCard>> getResultItems(String query) async {
       result_list.addAll(results);
     }
   }
-
+  is_getting_result = false;
   return result_list;
 }
 
@@ -64,9 +64,9 @@ List<ResultItemCard>? AddResultItemCardFromJson(String jsonString, String? plugi
       if (decodedJson is List) {
         allResults.addAll(decodedJson.map<ResultItemCard>((item) {
           return ResultItemCard(
-            title: item['name']?.toString() ?? '未命名',
-            content: item['path']?.toString().replaceAll('\\', '\\') ?? '路径未知',
-            cmd: item['open_cmd']?.toString().replaceAll('\\', '\\'),
+            title: item['title']?.toString() ?? '未命名',
+            content: item['content']?.toString().replaceAll('\\', '\\') ?? '路径未知',
+            cmd: item['cmd']?.toString().replaceAll('\\', '\\'),
             image_path: plugin_image_path,
           );
         }).toList());
@@ -74,9 +74,9 @@ List<ResultItemCard>? AddResultItemCardFromJson(String jsonString, String? plugi
 
         allResults.add(
           ResultItemCard(
-            title: decodedJson['name']?.toString() ?? '未命名',
-            content: decodedJson['path']?.toString().replaceAll('\\', '\\') ?? '路径未知',
-            cmd: decodedJson['open_cmd']?.toString().replaceAll('\\', '\\'),
+            title: decodedJson['title']?.toString() ?? '未命名',
+            content: decodedJson['content']?.toString().replaceAll('\\', '\\') ?? '路径未知',
+            cmd: decodedJson['cmd']?.toString().replaceAll('\\', '\\'),
             image_path: plugin_image_path,
 
           ),
