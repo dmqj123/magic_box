@@ -81,16 +81,7 @@ Future<List<ResultItemCard>> getResultItems(String query, {void Function(List<Re
         print('实时结果: $data');
       });*/
       //获取全部结果
-      List<int> stdout_bytes = (await process.stdout.toList()).expand((bytes) => bytes).toList();
-       String stdout_str;
-       try {
-         stdout_str = utf8.decode(stdout_bytes, allowMalformed: true);
-       } on FormatException catch (e) {
-         print('UTF-8解码错误: $e');
-         /*print('原始字节数据 (部分): ${stdout_bytes.sublist(0, stdout_bytes.length > 256 ? 256 : stdout_bytes.length)}');*/ // 打印前256个字节或全部
-         rethrow; // 重新抛出异常，以便上层捕获
-       }
-       results = AddResultItemCardFromJson(stdout_str, item.icon_path);
+      results = AddResultItemCardFromJson(await process.stdout.transform(systemEncoding.decoder).join(), item.icon_path);
       // 等待进程结束并获取退出码
       final exitCode = await process.exitCode;
       onDataChange?.call(results);
