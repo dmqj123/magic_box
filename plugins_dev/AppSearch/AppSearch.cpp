@@ -1,4 +1,4 @@
-﻿#include <Windows.h>
+#include <Windows.h>
 #include <shlobj.h>
 #include <shlwapi.h>
 #include <objbase.h>
