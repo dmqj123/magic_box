@@ -8,9 +8,6 @@
 #ifndef CSIDL_DESKTOP
 #define CSIDL_DESKTOP 0x0000
 #endif
-#ifndef CSIDL_MYDOCUMENTS
-#define CSIDL_MYDOCUMENTS 0x0005
-#endif
 #ifndef CSIDL_MYPICTURES
 #define CSIDL_MYPICTURES 0x0027
 #endif
@@ -61,7 +58,7 @@ bool isValidExtension(const std::string& filename) {
 
     // 允许的扩展名列表
     const std::vector<std::string> allowedExtensions = {
-        ".txt", ".doc", ".docx", ".ppt", ".pptx", ".mp3", ".mp4", ".md", ".cpp", ".zip", ".7z", ".exe", ".png", ".gif", ".jpg", ".jpeg"
+        ".txt", ".doc", ".docx", ".ppt", ".pptx", ".mp3", ".mp4", ".md", ".cpp", ".zip", ".7z", ".png", ".gif", ".jpg", ".jpeg"
     };
 
     // 检查是否在允许列表中
@@ -108,12 +105,16 @@ void searchDirectory(const std::string& path, const std::string& keyword) {
             if (lowerName.find(keyword) != std::string::npos) {
                 // 构造打开文件资源管理器的命令
                 std::string openCmd = "explorer.exe \"" + fullPath + "\"";
+                // 获取文件扩展名（小写）
+                size_t dotPos = filename.find_last_of('.');
+                std::string ext = dotPos != std::string::npos ? toLower(filename.substr(dotPos)) : "";
 
                 // 输出JSON格式结果
                 std::cout << "{"
                     << "\"title\":\"" << escapeJsonString(filename) << "\","
                     << "\"content\":\"" << escapeJsonString(fullPath) << "\","
                     << "\"cmd\":\"" << escapeJsonString(openCmd) << "\""
+                    << (ext == ".png" || ext == ".jpg" || ext == ".jpeg" ? ",\"preview_path\":\"" + escapeJsonString(fullPath) + "\"" : "")
                     << "}\n"
                     << "\nnext_result\n";
             }
@@ -140,7 +141,6 @@ int main(int argc, char* argv[]) {
     // 定义要搜索的目录类型
     const std::vector<int> folderTypes = {
         CSIDL_DESKTOP,         // 桌面
-        CSIDL_MYDOCUMENTS,      // 文档
         CSIDL_MYPICTURES,       // 图片
         CSIDL_MYMUSIC,          // 音乐
         CSIDL_MYVIDEO,          // 视频

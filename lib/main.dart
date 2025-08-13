@@ -43,20 +43,28 @@ class MyApp extends StatefulWidget {
   State<MyApp> createState() => _MyAppState();
 }
 
+ late final _MyAppState myAppState;
 class _MyAppState extends State<MyApp> with WindowListener {
   bool is_more_spreadout = false;
   bool is_result_show = false;
   String input_text = "";
-  List<ResultItemCard> result_items = [];
 
   void getResults() async {
-    result_items = await getResultItems(input_text);
+    result_items = await getResultItems(input_text,onDataChange: (data){
+      setState(() {
+        if(data!=null){
+          result_items = data;
+        }
+      });
+    });
     setState(() {});
   }
 
   @override
   void initState() {
     super.initState();
+    myAppState = this;
+
     windowManager.addListener(this);
   }
 
@@ -110,8 +118,6 @@ class _MyAppState extends State<MyApp> with WindowListener {
                     children: [
                       Expanded(
                         child: TransparentSearchBox(
-                          myAppState: this,
-
                           onSearchSubmitted: (value) {
                             if (value.isNotEmpty) {
                               setState(() {
@@ -308,8 +314,10 @@ class _MyAppState extends State<MyApp> with WindowListener {
             ),
             Expanded(
               child: ListView(
+
                 children: [
-                  if (result_items.length == 0) Text("暂无结果"),
+                  if (result_items.length == 0) Text(is_getting_result ? "获取中..." : "暂无结果"),
+
                   ...result_items,
                 ],
               ),
@@ -322,7 +330,6 @@ class _MyAppState extends State<MyApp> with WindowListener {
 }
 
 class TransparentSearchBox extends StatefulWidget {
-  final _MyAppState myAppState;
   final ValueChanged<String> onSearchSubmitted;
   final VoidCallback onTap;
 
@@ -330,7 +337,6 @@ class TransparentSearchBox extends StatefulWidget {
     super.key,
     required this.onSearchSubmitted,
     required this.onTap,
-    required this.myAppState,
   });
 
   @override
@@ -385,11 +391,11 @@ class _TransparentSearchBoxState extends State<TransparentSearchBox> {
               onSubmitted: widget.onSearchSubmitted,
               //当文字改变
               onChanged: (value) {
-                widget.myAppState.setState(() {
-                  widget.myAppState.is_result_show = true;
-                  widget.myAppState.input_text = value;
+                myAppState!.setState(() {
+                  myAppState!.is_result_show = true;
+                  myAppState!.input_text = value;
                   if (value != "") {
-                    widget.myAppState.getResults();
+                    myAppState!.getResults();
                   }
                 });
               },

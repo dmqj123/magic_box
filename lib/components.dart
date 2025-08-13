@@ -84,8 +84,8 @@ class _ResultItemCardState extends State<ResultItemCard> {
                   Padding(
                     padding: const EdgeInsets.only(right: 16.0),
                     child: ClipOval(
-                      child: Image.network(
-                        widget.image_path!,
+                      child: Image.file(
+                        File(widget.image_path!),
                         width: 25,
                         height: 25,
                         fit: BoxFit.cover,
@@ -97,6 +97,7 @@ class _ResultItemCardState extends State<ResultItemCard> {
                             child: Icon(
                               Icons.broken_image,
                               color: Colors.grey[400],
+                              size: 25, // 指定图标大小与图片大小一致
                             ),
                           );
                         },
