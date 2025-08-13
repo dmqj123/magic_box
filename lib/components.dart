@@ -137,6 +137,7 @@ class _ResultItemCardState extends State<ResultItemCard> {
                       File(widget.preview_path!),
                       width: WINDOW_WIDTH / 12,
                       height: WINDOW_WIDTH / 12,
+                      fit: BoxFit.cover,
                     ),
                   ),
                 if (_hasFocus)

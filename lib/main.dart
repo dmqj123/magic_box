@@ -43,20 +43,29 @@ class MyApp extends StatefulWidget {
   State<MyApp> createState() => _MyAppState();
 }
 
- late final _MyAppState myAppState;
+late final _MyAppState myAppState;
+
 class _MyAppState extends State<MyApp> with WindowListener {
   bool is_more_spreadout = false;
   bool is_result_show = false;
   String input_text = "";
 
   void getResults() async {
-    result_items = await getResultItems(input_text,onDataChange: (data){
-      setState(() {
-        if(data!=null){
-          result_items = data;
-        }
-      });
-    });
+    if (input_text != null && input_text.length > 0 && input_text != "" && input_text != " " && input_text.isNotEmpty) {
+      result_items = await getResultItems(
+        input_text,
+        onDataChange: (data) {
+          setState(() {
+            if (data != null) {
+              result_items = data;
+            }
+          });
+        },
+      );
+    }
+    else{
+      result_items = [];
+    }
     setState(() {});
   }
 
@@ -288,18 +297,16 @@ class _MyAppState extends State<MyApp> with WindowListener {
                   onPressed: () {
                     setState(() {
                       //TODO
-                      setState(() {
-                        getResults();
-                      });
+                      getResults();
                     });
                   },
                   icon:
                       (is_getting_result)
                           ? SizedBox(
-                              width: 23,
-                              height: 23,
-                              child: CircularProgressIndicator(),
-                            )
+                            width: 23,
+                            height: 23,
+                            child: CircularProgressIndicator(),
+                          )
                           : Icon(Icons.replay),
                 ),
                 IconButton(
@@ -314,9 +321,9 @@ class _MyAppState extends State<MyApp> with WindowListener {
             ),
             Expanded(
               child: ListView(
-
                 children: [
-                  if (result_items.length == 0) Text(is_getting_result ? "获取中..." : "暂无结果"),
+                  if (result_items.length == 0)
+                    Text(is_getting_result ? "获取中..." : "暂无结果"),
 
                   ...result_items,
                 ],
