@@ -24,6 +24,7 @@ List<plugin> plugins = [
     version: "1.0.0",
     //icon_path: "C:\\Users\\abcdef\\Downloads\\aQjQWax4Tl.jpg",
   ),
+
   /*
   plugin(
     name: "WebSearch",
@@ -32,7 +33,6 @@ List<plugin> plugins = [
     version: "1.0.0",
     //icon_path: "C:\\Users\\abcdef\\Downloads\\aQjQWax4Tl.jpg",
   ),*/
-
 ];
 
 List<plugin> getPlugins() {
@@ -52,7 +52,10 @@ void killAllRunningProcesses() {
   get_result_processes.clear(); // 清空列表
 }
 
-Future<List<ResultItemCard>> getResultItems(String query, {void Function(List<ResultItemCard>?)? onDataChange}) async {
+Future<List<ResultItemCard>> getResultItems(
+  String query, {
+  void Function(List<ResultItemCard>?)? onDataChange,
+}) async {
   killAllRunningProcesses();
 
   is_getting_result = true;
@@ -61,16 +64,17 @@ Future<List<ResultItemCard>> getResultItems(String query, {void Function(List<Re
   List<Future<List<ResultItemCard>?>> get_results_futures = [];
 
   for (plugin item in plugins) {
-    get_results_futures.add(Future<List<ResultItemCard>?> (() async {
-      get_result_processes.add(await Process.start("cmd", [
-        "/C " + item.path + " -k " + query,
-      ]));
-      Process process = get_result_processes.last;
+    get_results_futures.add(
+      Future<List<ResultItemCard>?>(() async {
+        get_result_processes.add(
+          await Process.start("cmd", ["/C " + item.path + " -k " + query]),
+        );
+        Process process = get_result_processes.last;
 
-      // 从进程的标准输出读取数据并解码
-      // 从进程的标准输出实时读取数据并解码
-      List<ResultItemCard>? results = [];
-      /*
+        // 从进程的标准输出读取数据并解码
+        // 从进程的标准输出实时读取数据并解码
+        List<ResultItemCard>? results = [];
+        /*
       process.stdout.transform(systemEncoding.decoder).listen((data) {
         print("object");
         // 每当有新的数据块可用时，此回调函数就会被调用
@@ -80,22 +84,28 @@ Future<List<ResultItemCard>> getResultItems(String query, {void Function(List<Re
         // 您可以在这里处理实时结果，例如更新UI
         print('实时结果: $data');
       });*/
-      //获取全部结果
-      results = AddResultItemCardFromJson(await process.stdout.transform(systemEncoding.decoder).join(), item.icon_path);
-      // 等待进程结束并获取退出码
-      final exitCode = await process.exitCode;
-      onDataChange?.call(results);
-      print("${item.name}插件查询完成，退出码：$exitCode");
-      // 将非空的results中的所有项添加到result_list
-      // 移除此处对 result_list 的修改
-      // if (results != null && results.isNotEmpty) {
-      //   result_list.addAll(results);
-      // }
-      return results; // 返回当前 Future 获得的结果
-    }));
+        //获取全部结果
+        results = AddResultItemCardFromJson(
+          await process.stdout.transform(systemEncoding.decoder).join(),
+          item.icon_path,
+        );
+        // 等待进程结束并获取退出码
+        final exitCode = await process.exitCode;
+        onDataChange?.call(results);
+        print("${item.name}插件查询完成，退出码：$exitCode");
+        // 将非空的results中的所有项添加到result_list
+        // 移除此处对 result_list 的修改
+        // if (results != null && results.isNotEmpty) {
+        //   result_list.addAll(results);
+        // }
+        return results; // 返回当前 Future 获得的结果
+      }),
+    );
   }
 
-  List<List<ResultItemCard>?> allResults = await Future.wait(get_results_futures);
+  List<List<ResultItemCard>?> allResults = await Future.wait(
+    get_results_futures,
+  );
 
   for (List<ResultItemCard>? results in allResults) {
     if (results != null) {
@@ -106,8 +116,10 @@ Future<List<ResultItemCard>> getResultItems(String query, {void Function(List<Re
   return result_list;
 }
 
-List<ResultItemCard>? AddResultItemCardFromJson(String jsonString, String? plugin_image_path) {
-
+List<ResultItemCard>? AddResultItemCardFromJson(
+  String jsonString,
+  String? plugin_image_path,
+) {
   List<ResultItemCard> allResults = [];
   List<String> json_list = jsonString.split("next_result");
 
@@ -118,27 +130,36 @@ List<ResultItemCard>? AddResultItemCardFromJson(String jsonString, String? plugi
       final decodedJson = jsonDecode(json_item);
 
       if (decodedJson is List) {
-        allResults.addAll(decodedJson.map<ResultItemCard>((item) {
-          return ResultItemCard(
-            title: item['title']?.toString() ?? '未命名',
-            content: item['content']?.toString().replaceAll('\\', '\\') ?? '路径未知',
-            cmd: item['cmd']?.toString().replaceAll('\\', '\\'),
-            image_path: plugin_image_path,
-            preview_path: item['preview_path']?.toString().replaceAll('\\', '\\'),
-          );
-        }).toList());
+        allResults.addAll(
+          decodedJson.map<ResultItemCard>((item) {
+            return ResultItemCard(
+              title: item['title']?.toString() ?? '未命名',
+              content:
+                  item['content']?.toString().replaceAll('\\', '\\') ?? '路径未知',
+              cmd: item['cmd']?.toString().replaceAll('\\', '\\'),
+              image_path: plugin_image_path,
+              preview_path: item['preview_path']?.toString().replaceAll(
+                '\\',
+                '\\',
+              ),
+            );
+          }).toList(),
+        );
       } else if (decodedJson is Map<String, dynamic>) {
-
         allResults.add(
           ResultItemCard(
             title: decodedJson['title']?.toString() ?? '未命名',
-            content: decodedJson['content']?.toString().replaceAll('\\', '\\') ?? '路径未知',
+            content:
+                decodedJson['content']?.toString().replaceAll('\\', '\\') ??
+                '路径未知',
             cmd: decodedJson['cmd']?.toString().replaceAll('\\', '\\'),
             image_path: plugin_image_path,
-            preview_path: decodedJson['preview_path']?.toString().replaceAll('\\', '\\'),
+            preview_path: decodedJson['preview_path']?.toString().replaceAll(
+              '\\',
+              '\\',
+            ),
           ),
         );
-
       } else {
         print('JSON解析错误: 未知的JSON类型 - $json_item');
       }

@@ -98,7 +98,7 @@ class _MyAppState extends State<MyApp> with WindowListener {
     if (is_result_show) {
       double height = 120;
       //根据内容判断高度，最大500
-      height += result_items.length * 80;
+      height += result_items.length * 95;
       if (height > 500) {
         height = 500;
       }
