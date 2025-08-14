@@ -70,11 +70,23 @@ void CleanTempIcons() {
     wstring iconDir = wstring(tempPath) + L"app_icons_cache\\";
 
     // 删除整个图标缓存目录
+    // 确保路径以双空字符结尾，这是SHFileOperationW的要求
+    // SHFileOperationW需要一个以双空字符结尾的字符串列表
+    // 因此，我们需要创建一个新的缓冲区来存储路径并添加双空字符
+    size_t pathLen = iconDir.length();
+    std::vector<wchar_t> fromPath(pathLen + 2);
+    wcsncpy_s(fromPath.data(), fromPath.size(), iconDir.c_str(), pathLen);
+    fromPath[pathLen] = L'\0';
+    fromPath[pathLen + 1] = L'\0';
+
     SHFILEOPSTRUCTW fileOp = { 0 };
     fileOp.wFunc = FO_DELETE;
-    fileOp.pFrom = (iconDir + L'\0').c_str();
+    fileOp.pFrom = fromPath.data();
     fileOp.fFlags = FOF_NO_UI | FOF_NOCONFIRMATION | FOF_SILENT;
     SHFileOperationW(&fileOp);
+
+    // 等待文件操作完成，确保目录被完全删除
+    Sleep(100); // 100毫秒
 
     // 重新创建目录
     CreateDirectoryW(iconDir.c_str(), nullptr);
@@ -85,6 +97,7 @@ wstring GetIconCacheDir() {
     wchar_t tempPath[MAX_PATH];
     GetTempPathW(MAX_PATH, tempPath);
     wstring iconDir = wstring(tempPath) + L"app_icons_cache\\";
+    // 确保目录存在
     CreateDirectoryW(iconDir.c_str(), nullptr);
     return iconDir;
 }
