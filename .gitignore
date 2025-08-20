@@ -23,6 +23,19 @@ migrate_working_dir/
 # is commented out by default.
 #.vscode/
 
+# Build output directories
+windows/runner/Debug/
+linux/runner/Debug/
+macos/Runner/Debug/
+
+# Plugin build output directories
+plugins_dev/*/Debug/
+
+# Release build output
+build/windows/x64/runner/Release/
+build/linux/x64/runner/Release/
+build/macos/Runner/Release/
+
 # Flutter/Dart/Pub related
 **/doc/api/
 **/ios/Flutter/.last_build_id
