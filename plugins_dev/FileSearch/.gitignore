@@ -1,3 +1,6 @@
 .vs/
 Debug/
 x64/
+*.pdb
+*.obj
+*.exe
