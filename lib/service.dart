@@ -4,6 +4,29 @@ import 'dart:io';
 import 'components.dart';
 import 'class.dart';
 
+// 根据编码名称获取编码对象
+Encoding getEncodingByName(String? encodingName) {
+  if (encodingName == null) {
+    return utf8; // 默认使用UTF-8编码
+  }
+
+  switch (encodingName.toLowerCase()) {
+    case 'utf8':
+    case 'utf-8':
+      return utf8;
+    case 'ascii':
+      return ascii;
+    case 'latin1':
+      return latin1;
+    // 可以根据需要添加更多编码
+    default:
+      return utf8; // 默认使用UTF-8编码
+  }
+}
+
+// 默认系统编码
+final Encoding systemEncoding = utf8;
+
 bool is_getting_result = false;
 List<Process> get_result_processes = [];
 List<ResultItemCard> result_items = [];
@@ -85,9 +108,34 @@ Future<List<ResultItemCard>> getResultItems(
         print('实时结果: $data');
       });*/
         //获取全部结果
+        // 首先读取进程的输出
+        String rawOutput =
+            await process.stdout.transform(systemEncoding.decoder).join();
+
+        // 尝试解析JSON以获取编码信息
+        String? encodingFromJson;
+        try {
+          final decodedJson = jsonDecode(rawOutput.split("next_result")[0]);
+          if (decodedJson is Map<String, dynamic>) {
+            encodingFromJson = decodedJson['encoding']?.toString();
+          } else if (decodedJson is List && decodedJson.isNotEmpty) {
+            final firstItem = decodedJson[0];
+            if (firstItem is Map<String, dynamic>) {
+              encodingFromJson = firstItem['encoding']?.toString();
+            }
+          }
+        } catch (e) {
+          print('解析JSON获取编码信息时出错: $e');
+        }
+
+        // 根据JSON中的编码信息或默认编码来解码输出
+        Encoding encoding = getEncodingByName(encodingFromJson);
+        rawOutput = await process.stdout.transform(encoding.decoder).join();
+
         results = AddResultItemCardFromJson(
-          await process.stdout.transform(systemEncoding.decoder).join(),
+          rawOutput,
           item.icon_path,
+          encodingFromJson, // 传递从JSON中获取的编码信息
         );
         // 等待进程结束并获取退出码
         final exitCode = await process.exitCode;
@@ -119,6 +167,7 @@ Future<List<ResultItemCard>> getResultItems(
 List<ResultItemCard>? AddResultItemCardFromJson(
   String jsonString,
   String? plugin_image_path,
+  String? encoding,
 ) {
   List<ResultItemCard> allResults = [];
 
@@ -143,7 +192,9 @@ List<ResultItemCard>? AddResultItemCardFromJson(
                 '\\',
                 '\\',
               ),
-              encoding: item['encoding']?.toString(),
+              encoding:
+                  item['encoding']?.toString() ??
+                  encoding, // 如果没有encoding键，则使用传入的编码
             );
           }).toList(),
         );
@@ -160,7 +211,9 @@ List<ResultItemCard>? AddResultItemCardFromJson(
               '\\',
               '\\',
             ),
-            encoding: decodedJson['encoding']?.toString(),
+            encoding:
+                decodedJson['encoding']?.toString() ??
+                encoding, // 如果没有encoding键，则使用传入的编码
           ),
         );
       } else {
