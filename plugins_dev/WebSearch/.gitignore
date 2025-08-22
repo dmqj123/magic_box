@@ -1,2 +1,5 @@
 .vs/
 Debug/
+*.pdb
+*.obj
+*.exe

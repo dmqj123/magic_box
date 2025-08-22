@@ -10,7 +10,7 @@ class ResultItemCard extends StatefulWidget {
   final VoidCallback? onTap;
   final String? preview_path;
   final String? cmd;
-
+  final String? encoding;
 
   const ResultItemCard({
     Key? key,
@@ -20,7 +20,7 @@ class ResultItemCard extends StatefulWidget {
     this.preview_path,
     this.onTap,
     this.cmd,
-
+    this.encoding,
   }) : super(key: key);
 
   @override
@@ -67,7 +67,7 @@ class _ResultItemCardState extends State<ResultItemCard> {
           // _onFocusChange 已经处理了状态更新，这里可以留空或添加其他逻辑
         },
         child: InkWell(
-          onTap: (){
+          onTap: () {
             if (widget.onTap != null) {
               widget.onTap!();
             }
