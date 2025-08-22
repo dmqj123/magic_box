@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -86,16 +85,8 @@ Future<List<ResultItemCard>> getResultItems(
         print('实时结果: $data');
       });*/
         //获取全部结果
-        // 对于AppSearch插件，使用UTF-8编码解码；对于其他插件，使用系统默认编码
-        StreamTransformer<List<int>, String> decoder;
-        if (item.name == "AppSearch") {
-          decoder = utf8.decoder;
-        } else {
-          decoder = systemEncoding.decoder;
-        }
-
         results = AddResultItemCardFromJson(
-          await process.stdout.transform(decoder).join(),
+          await process.stdout.transform(systemEncoding.decoder).join(),
           item.icon_path,
         );
         // 等待进程结束并获取退出码
