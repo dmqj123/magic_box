@@ -121,6 +121,7 @@ List<ResultItemCard>? AddResultItemCardFromJson(
   String? plugin_image_path,
 ) {
   List<ResultItemCard> allResults = [];
+
   List<String> json_list = jsonString.split("next_result");
 
   for (String json_item in json_list) {
@@ -142,6 +143,7 @@ List<ResultItemCard>? AddResultItemCardFromJson(
                 '\\',
                 '\\',
               ),
+              encoding: item['encoding']?.toString(),
             );
           }).toList(),
         );
@@ -158,6 +160,7 @@ List<ResultItemCard>? AddResultItemCardFromJson(
               '\\',
               '\\',
             ),
+            encoding: decodedJson['encoding']?.toString(),
           ),
         );
       } else {
