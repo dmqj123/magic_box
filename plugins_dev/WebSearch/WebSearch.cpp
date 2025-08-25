@@ -3,6 +3,8 @@
 #include <vector>
 #include <windows.h>
 #include <shlobj.h>
+#include <fstream>
+#include <sstream>
 #pragma comment(lib, "shell32.lib")
 
 // 将字符串转换为小写
@@ -108,95 +110,105 @@ void searchDirectory(const std::string& path, const std::string& keyword) {
     FindClose(hFind);
 }
 
-// 获取Edge浏览器收藏夹目录
-std::string getEdgeFavoritesPath() {
+// 获取Edge浏览器收藏夹文件路径
+std::string getEdgeBookmarksPath() {
     CHAR userProfile[MAX_PATH];
     if (SUCCEEDED(SHGetFolderPathA(NULL, CSIDL_PROFILE, NULL, 0, userProfile))) {
-        std::string favoritesPath = std::string(userProfile) + "\\AppData\\Local\\Microsoft\\Edge\\User Data\\Default\\Favorites";
-        return favoritesPath;
+        std::string bookmarksPath = std::string(userProfile) + "\\AppData\\Local\\Microsoft\\Edge\\User Data\\Default\\Bookmarks";
+        return bookmarksPath;
     }
     return "";
 }
 
-// 获取备选的Edge收藏夹目录
-std::string getAlternativeEdgeFavoritesPath() {
-    CHAR userProfile[MAX_PATH];
-    if (SUCCEEDED(SHGetFolderPathA(NULL, CSIDL_PROFILE, NULL, 0, userProfile))) {
-        // 尝试其他可能的路径
-        std::vector<std::string> possiblePaths = {
-            std::string(userProfile) + "\\AppData\\Local\\Microsoft\\Edge\\User Data\\Default\\Favorites",
-            std::string(userProfile) + "\\AppData\\Roaming\\Microsoft\\Edge\\User Data\\Default\\Favorites",
-            std::string(userProfile) + "\\Favorites"  // 浏览器导出的收藏夹可能在这里
-        };
+// 解析Edge收藏夹JSON文件
+void parseEdgeBookmarks(const std::string& bookmarksPath, const std::string& keyword) {
+    std::ifstream file(bookmarksPath);
+    if (!file.is_open()) {
+        return;
+    }
+
+    std::stringstream buffer;
+    buffer << file.rdbuf();
+    std::string content = buffer.str();
+    file.close();
+
+    // 打印content字符串的前500个字符用于调试
+    // std::cout << "Content: " << content.substr(0, 500) << std::endl;
+
+    // 简单的JSON解析，查找包含关键字的书签
+    size_t pos = 0;
+    while ((pos = content.find("\"name\"", pos)) != std::string::npos) {
+        // 找到name字段的值
+        size_t nameStart = content.find("\"", pos + 6);
+        if (nameStart == std::string::npos) break;
+        nameStart++; // 跳过开头的引号
         
-        for (const auto& path : possiblePaths) {
-            DWORD attributes = GetFileAttributesA(path.c_str());
-            if (attributes != INVALID_FILE_ATTRIBUTES && (attributes & FILE_ATTRIBUTE_DIRECTORY)) {
-                return path;
+        size_t nameEnd = content.find("\"", nameStart);
+        if (nameEnd == std::string::npos) break;
+        
+        std::string name = content.substr(nameStart, nameEnd - nameStart);
+        std::string lowerName = toLower(name);
+        
+        // 检查名称是否包含关键字
+        if (lowerName.find(keyword) != std::string::npos) {
+            // 找到对应的URL
+            size_t urlPos = content.find("\"url\"", nameEnd);
+            if (urlPos != std::string::npos) {
+                size_t colonPos = content.find(":", urlPos + 5); // 找到冒号
+                if (colonPos != std::string::npos) {
+                    size_t urlStart = content.find("\"", colonPos); // 找到URL值的开始引号
+                    if (urlStart != std::string::npos) {
+                        urlStart++; // 跳过开头的引号
+                        size_t urlEnd = content.find("\"", urlStart); // 找到URL值的结束引号
+                        if (urlEnd != std::string::npos) {
+                            std::string url = content.substr(urlStart, urlEnd - urlStart);
+                            
+                            // 调试输出
+                            // std::cout << "Name: " << name << ", URL: " << url << std::endl;
+                            
+                            // 输出JSON格式结果
+                            std::cout << "{"
+                                << "\"title\":\"" << escapeJsonString(name) << "\","
+                                << "\"content\":\"" << escapeJsonString(url) << "\","
+                                << "\"cmd\":\"cmd.exe /c start \\\"\\\" \\\"" + escapeJsonString(url) + "\\\"\\\"\""
+                                << "}\n"
+                                << "\nnext_result\n";
+                        }
+                    }
+                }
             }
         }
+        
+        pos = nameEnd;
     }
-    return "";
 }
 
 int main(int argc, char* argv[]) {
     // 检查命令行参数
-    if (argc < 3 || (std::string(argv[1]) != "-k" && std::string(argv[1]) != "-d")) {
-        std::cerr << "Usage: " << argv[0] << " -k <keyword> [-d <directory>]\n";
-        std::cerr << "       " << argv[0] << " -d <directory> -k <keyword>\n";
+    if (argc != 3 || std::string(argv[1]) != "-k") {
+        std::cerr << "Usage: " << argv[0] << " -k <keyword>\n";
         return 1;
     }
 
-    std::string keyword;
-    std::string searchDirectoryPath;
-
-    // 解析命令行参数
-    for (int i = 1; i < argc; i++) {
-        if (std::string(argv[i]) == "-k" && i + 1 < argc) {
-            keyword = toLower(argv[i + 1]);
-            i++; // 跳过下一个参数
-        } else if (std::string(argv[i]) == "-d" && i + 1 < argc) {
-            searchDirectoryPath = argv[i + 1];
-            i++; // 跳过下一个参数
-        }
-    }
+    std::string keyword = toLower(argv[2]);  // 获取并转换为小写关键字
 
     // 如果关键字为空，则直接退出
     if (keyword.empty()) {
-        std::cerr << "Keyword cannot be empty\n";
+        return 0;
+    }
+
+    // 获取Edge浏览器收藏夹文件路径
+    std::string bookmarksPath = getEdgeBookmarksPath();
+    
+    // 检查文件是否存在
+    DWORD attributes = GetFileAttributesA(bookmarksPath.c_str());
+    if (attributes == INVALID_FILE_ATTRIBUTES || (attributes & FILE_ATTRIBUTE_DIRECTORY)) {
+        std::cerr << "Edge bookmarks file not found\n";
         return 1;
     }
 
-    // 如果指定了搜索目录，则使用指定的目录
-    if (!searchDirectoryPath.empty()) {
-        DWORD attributes = GetFileAttributesA(searchDirectoryPath.c_str());
-        if (attributes == INVALID_FILE_ATTRIBUTES || !(attributes & FILE_ATTRIBUTE_DIRECTORY)) {
-            std::cerr << "Specified directory not found: " << searchDirectoryPath << "\n";
-            return 1;
-        }
-    } else {
-        // 获取Edge浏览器收藏夹目录
-        searchDirectoryPath = getEdgeFavoritesPath();
-        
-        // 检查目录是否存在
-        if (searchDirectoryPath.empty()) {
-            std::cerr << "Failed to get Edge favorites path\n";
-            return 1;
-        }
-
-        DWORD attributes = GetFileAttributesA(searchDirectoryPath.c_str());
-        if (attributes == INVALID_FILE_ATTRIBUTES || !(attributes & FILE_ATTRIBUTE_DIRECTORY)) {
-            // 尝试备选路径
-            searchDirectoryPath = getAlternativeEdgeFavoritesPath();
-            if (searchDirectoryPath.empty()) {
-                std::cerr << "Edge favorites directory not found\n";
-                return 1;
-            }
-        }
-    }
-
-    // 搜索收藏夹目录
-    searchDirectory(searchDirectoryPath, keyword);
+    // 解析Edge收藏夹文件
+    parseEdgeBookmarks(bookmarksPath, keyword);
 
     return 0;
 }
