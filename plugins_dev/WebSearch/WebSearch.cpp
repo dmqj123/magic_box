@@ -34,6 +34,45 @@ std::string escapeJsonString(const std::string& str) {
     return output;
 }
 
+// 从URL中提取域名
+std::string extractDomain(const std::string& url) {
+    std::string domain;
+    
+    // 查找协议部分（http://或https://）
+    size_t protocolPos = url.find("://");
+    size_t startPos = 0;
+    
+    if (protocolPos != std::string::npos) {
+        startPos = protocolPos + 3; // 跳过 "://"
+    }
+    
+    // 查找域名结束位置（第一个斜杠或问号）
+    size_t endPos = url.find_first_of("/?", startPos);
+    
+    if (endPos != std::string::npos) {
+        domain = url.substr(startPos, endPos - startPos);
+    } else {
+        domain = url.substr(startPos);
+    }
+    
+    return domain;
+}
+
+// 构造可能的logo URL
+std::string getLogoUrl(const std::string& url) {
+    std::string domain = extractDomain(url);
+    
+    // 如果域名为空，返回空字符串
+    if (domain.empty()) {
+        return "";
+    }
+    
+    // 构造favicon URL
+    std::string logoUrl = "http://" + domain + "/favicon.ico";
+    
+    return logoUrl;
+}
+
 // 检查文件扩展名是否符合收藏夹要求
 bool isValidExtension(const std::string& filename) {
     // 获取文件扩展名（小写）
@@ -100,8 +139,7 @@ void searchDirectory(const std::string& path, const std::string& keyword) {
                 std::cout << "{"
                     << "\"title\":\"" << escapeJsonString(filename) << "\","
                     << "\"content\":\"" << escapeJsonString(fullPath) << "\","
-                    << "\"cmd\":\"" << escapeJsonString(openCmd) << "\","
-                    << "\"preview_path\":\"\""
+                    << "\"cmd\":\"" << escapeJsonString(openCmd) << "\""
                     << "}\n"
                     << "\nnext_result\n";
             }
@@ -132,11 +170,7 @@ void parseEdgeBookmarks(const std::string& bookmarksPath, const std::string& key
     buffer << file.rdbuf();
     std::string content = buffer.str();
     file.close();
-
-    // 打印content字符串的前500个字符用于调试
-    // std::cout << "Content: " << content.substr(0, 500) << std::endl;
-
-    // 简单的JSON解析，查找包含关键字的书签
+    
     size_t pos = 0;
     while ((pos = content.find("\"name\"", pos)) != std::string::npos) {
         // 找到name字段的值
@@ -164,16 +198,21 @@ void parseEdgeBookmarks(const std::string& bookmarksPath, const std::string& key
                         if (urlEnd != std::string::npos) {
                             std::string url = content.substr(urlStart, urlEnd - urlStart);
                             
-                            // 调试输出
-                            // std::cout << "Name: " << name << ", URL: " << url << std::endl;
+                            // 获取网站logo URL
+                            std::string logoUrl = getLogoUrl(url);
                             
                             // 输出JSON格式结果
                             std::cout << "{"
                                 << "\"title\":\"" << escapeJsonString(name) << "\","
                                 << "\"content\":\"" << escapeJsonString(url) << "\","
-                                << "\"cmd\":\"explorer.exe \\\"" + escapeJsonString(url) + "\\\"\""
-                                << ",\"preview_path\":\"\""
-                                << "}\n"
+                                << "\"cmd\":\"explorer.exe \\\"" + escapeJsonString(url) + "\\\"\"";
+                            
+                            // 如果logo URL不为空，则添加preview_path字段，值为logo URL
+                            if (!logoUrl.empty()) {
+                                std::cout << ",\"preview_path\":\"" << escapeJsonString(logoUrl) << "\"";
+                            }
+                            
+                            std::cout << "}\n"
                                 << "\nnext_result\n";
                         }
                     }
