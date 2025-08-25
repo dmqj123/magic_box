@@ -16,6 +16,33 @@ std::string toLower(const std::string& str) {
     return lowerStr;
 }
 
+// 将宽字符串转换为小写
+std::wstring toLower(const std::wstring& str) {
+    std::wstring lowerStr;
+    for (wchar_t c : str) {
+        lowerStr += towlower(c);
+    }
+    return lowerStr;
+}
+
+// 将宽字符串转换为UTF-8字符串
+std::string wstringToUTF8(const std::wstring& wstr) {
+    if (wstr.empty()) return std::string();
+    int size_needed = WideCharToMultiByte(CP_UTF8, 0, &wstr[0], (int)wstr.size(), NULL, 0, NULL, NULL);
+    std::string strTo(size_needed, 0);
+    WideCharToMultiByte(CP_UTF8, 0, &wstr[0], (int)wstr.size(), &strTo[0], size_needed, NULL, NULL);
+    return strTo;
+}
+
+// 将UTF-8字符串转换为宽字符串
+std::wstring utf8ToWstring(const std::string& str) {
+    if (str.empty()) return std::wstring();
+    int size_needed = MultiByteToWideChar(CP_UTF8, 0, &str[0], (int)str.size(), NULL, 0);
+    std::wstring wstrTo(size_needed, 0);
+    MultiByteToWideChar(CP_UTF8, 0, &str[0], (int)str.size(), &wstrTo[0], size_needed);
+    return wstrTo;
+}
+
 // 转义JSON字符串中的特殊字符
 std::string escapeJsonString(const std::string& str) {
     std::string output;
@@ -96,29 +123,31 @@ bool isValidExtension(const std::string& filename) {
 
 // 递归搜索目录
 void searchDirectory(const std::string& path, const std::string& keyword) {
-    WIN32_FIND_DATAA findData;
+    WIN32_FIND_DATAW findData;
     HANDLE hFind;
-    std::string searchPath = path + "\\*";
+    std::wstring wPath = utf8ToWstring(path);
+    std::wstring searchPath = wPath + L"\\*";
 
-    hFind = FindFirstFileA(searchPath.c_str(), &findData);
+    hFind = FindFirstFileW(searchPath.c_str(), &findData);
     if (hFind == INVALID_HANDLE_VALUE) {
         return;
     }
 
     do {
-        if (findData.cFileName[0] == '.') {
+        if (findData.cFileName[0] == L'.') {
             continue; // 跳过 "." 和 ".."
         }
 
-        std::string fullPath = path + "\\" + findData.cFileName;
+        std::wstring wFileName(findData.cFileName);
+        std::wstring wFullPath = wPath + L"\\" + wFileName;
+        std::string fullPath = wstringToUTF8(wFullPath);
+        std::string filename = wstringToUTF8(wFileName);
 
         if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
             // 递归搜索子目录
             searchDirectory(fullPath, keyword);
         }
         else {
-            std::string filename = findData.cFileName;
-
             // 检查文件扩展名
             if (!isValidExtension(filename)) {
                 continue;
@@ -144,17 +173,18 @@ void searchDirectory(const std::string& path, const std::string& keyword) {
                     << "\nnext_result\n";
             }
         }
-    } while (FindNextFileA(hFind, &findData));
+    } while (FindNextFileW(hFind, &findData));
 
     FindClose(hFind);
 }
 
 // 获取Edge浏览器收藏夹文件路径
 std::string getEdgeBookmarksPath() {
-    CHAR userProfile[MAX_PATH];
-    if (SUCCEEDED(SHGetFolderPathA(NULL, CSIDL_PROFILE, NULL, 0, userProfile))) {
-        std::string bookmarksPath = std::string(userProfile) + "\\AppData\\Local\\Microsoft\\Edge\\User Data\\Default\\Bookmarks";
-        return bookmarksPath;
+    WCHAR userProfile[MAX_PATH];
+    if (SUCCEEDED(SHGetFolderPathW(NULL, CSIDL_PROFILE, NULL, 0, userProfile))) {
+        std::wstring wBookmarksPath(userProfile);
+        wBookmarksPath += L"\\AppData\\Local\\Microsoft\\Edge\\User Data\\Default\\Bookmarks";
+        return wstringToUTF8(wBookmarksPath);
     }
     return "";
 }
@@ -245,8 +275,9 @@ int main(int argc, char* argv[]) {
     // 获取Edge浏览器收藏夹文件路径
     std::string bookmarksPath = getEdgeBookmarksPath();
     
-    // 检查文件是否存在
-    DWORD attributes = GetFileAttributesA(bookmarksPath.c_str());
+// 检查文件是否存在
+    std::wstring wBookmarksPath = utf8ToWstring(bookmarksPath);
+    DWORD attributes = GetFileAttributesW(wBookmarksPath.c_str());
     if (attributes == INVALID_FILE_ATTRIBUTES || (attributes & FILE_ATTRIBUTE_DIRECTORY)) {
         std::cerr << "Edge bookmarks file not found\n";
         return 1;
