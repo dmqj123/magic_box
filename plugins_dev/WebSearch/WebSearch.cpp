@@ -225,6 +225,10 @@ void parseEdgeBookmarks(const std::string& bookmarksPath, const std::string& key
 }
 
 int main(int argc, char* argv[]) {
+    // 设置控制台代码页为UTF-8以支持中文字符
+    SetConsoleOutputCP(CP_UTF8);
+    SetConsoleCP(CP_UTF8);
+    
     // 检查命令行参数
     if (argc != 3 || std::string(argv[1]) != "-k") {
         std::cerr << "Usage: " << argv[0] << " -k <keyword>\n";
