@@ -130,7 +130,8 @@ class _ResultItemCardState extends State<ResultItemCard> {
                     ],
                   ),
                 ),
-                if (widget.preview_path != null)
+                if (widget.preview_path != null &&
+                    widget.preview_path!.isNotEmpty)
                   ClipRRect(
                     borderRadius: BorderRadius.circular(8.0),
                     child: Image.file(

@@ -90,7 +90,7 @@ void searchDirectory(const std::string& path, const std::string& keyword) {
 
             if (lowerName.find(keyword) != std::string::npos) {
                 // 构造打开浏览器的命令
-                std::string openCmd = "cmd.exe /c start \"\" \"" + fullPath + "\"";
+                std::string openCmd = "explorer.exe \"" + fullPath + "\"";
                 
                 // 获取文件扩展名（小写）
                 size_t dotPos = filename.find_last_of('.');
@@ -100,7 +100,8 @@ void searchDirectory(const std::string& path, const std::string& keyword) {
                 std::cout << "{"
                     << "\"title\":\"" << escapeJsonString(filename) << "\","
                     << "\"content\":\"" << escapeJsonString(fullPath) << "\","
-                    << "\"cmd\":\"" << escapeJsonString(openCmd) << "\""
+                    << "\"cmd\":\"" << escapeJsonString(openCmd) << "\","
+                    << "\"preview_path\":\"\""
                     << "}\n"
                     << "\nnext_result\n";
             }
@@ -170,7 +171,8 @@ void parseEdgeBookmarks(const std::string& bookmarksPath, const std::string& key
                             std::cout << "{"
                                 << "\"title\":\"" << escapeJsonString(name) << "\","
                                 << "\"content\":\"" << escapeJsonString(url) << "\","
-                                << "\"cmd\":\"cmd.exe /c start \\\"\\\" \\\"" + escapeJsonString(url) + "\\\"\\\"\""
+                                << "\"cmd\":\"explorer.exe \\\"" + escapeJsonString(url) + "\\\"\""
+                                << ",\"preview_path\":\"\""
                                 << "}\n"
                                 << "\nnext_result\n";
                         }
