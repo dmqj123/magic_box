@@ -1,4 +1,4 @@
-﻿#include <iostream>
+#include <iostream>
 #include <string>
 #include <vector>
 #include <windows.h>
@@ -122,7 +122,7 @@ bool isValidExtension(const std::string& filename) {
 }
 
 // 递归搜索目录
-void searchDirectory(const std::string& path, const std::string& keyword) {
+void searchDirectory(const std::string& path, const std::wstring& keyword) {
     WIN32_FIND_DATAW findData;
     HANDLE hFind;
     std::wstring wPath = utf8ToWstring(path);
@@ -154,9 +154,9 @@ void searchDirectory(const std::string& path, const std::string& keyword) {
             }
 
             // 检查文件名是否包含关键字
-            std::string lowerName = toLower(filename);
+            std::wstring wLowerName = toLower(wFileName);
 
-            if (lowerName.find(keyword) != std::string::npos) {
+            if (wLowerName.find(keyword) != std::wstring::npos) {
                 // 构造打开浏览器的命令
                 std::string openCmd = "explorer.exe \"" + fullPath + "\"";
                 
@@ -190,7 +190,7 @@ std::string getEdgeBookmarksPath() {
 }
 
 // 解析Edge收藏夹JSON文件
-void parseEdgeBookmarks(const std::string& bookmarksPath, const std::string& keyword) {
+void parseEdgeBookmarks(const std::string& bookmarksPath, const std::wstring& keyword) {
     std::ifstream file(bookmarksPath);
     if (!file.is_open()) {
         return;
@@ -212,10 +212,10 @@ void parseEdgeBookmarks(const std::string& bookmarksPath, const std::string& key
         if (nameEnd == std::string::npos) break;
         
         std::string name = content.substr(nameStart, nameEnd - nameStart);
-        std::string lowerName = toLower(name);
+        std::wstring wLowerName = toLower(utf8ToWstring(name));
         
         // 检查名称是否包含关键字
-        if (lowerName.find(keyword) != std::string::npos) {
+        if (wLowerName.find(keyword) != std::wstring::npos) {
             // 找到对应的URL
             size_t urlPos = content.find("\"url\"", nameEnd);
             if (urlPos != std::string::npos) {
@@ -254,18 +254,19 @@ void parseEdgeBookmarks(const std::string& bookmarksPath, const std::string& key
     }
 }
 
-int main(int argc, char* argv[]) {
+int wmain(int argc, wchar_t* argv[]) {
     // 设置控制台代码页为UTF-8以支持中文字符
     SetConsoleOutputCP(CP_UTF8);
     SetConsoleCP(CP_UTF8);
     
     // 检查命令行参数
-    if (argc != 3 || std::string(argv[1]) != "-k") {
-        std::cerr << "Usage: " << argv[0] << " -k <keyword>\n";
+    if (argc != 3 || std::wstring(argv[1]) != L"-k") {
+        // 注意：这里使用wprintf而不是std::wcerr，因为std::wcerr可能在某些环境下输出乱码
+        wprintf(L"Usage: %ls -k <keyword>\n", argv[0]);
         return 1;
     }
 
-    std::string keyword = toLower(argv[2]);  // 获取并转换为小写关键字
+    std::wstring keyword = toLower(argv[2]);  // 获取并转换为小写关键字
 
     // 如果关键字为空，则直接退出
     if (keyword.empty()) {
@@ -279,12 +280,30 @@ int main(int argc, char* argv[]) {
     std::wstring wBookmarksPath = utf8ToWstring(bookmarksPath);
     DWORD attributes = GetFileAttributesW(wBookmarksPath.c_str());
     if (attributes == INVALID_FILE_ATTRIBUTES || (attributes & FILE_ATTRIBUTE_DIRECTORY)) {
-        std::cerr << "Edge bookmarks file not found\n";
+        wprintf(L"//Edge bookmarks file not found\n");
         return 1;
     }
 
     // 解析Edge收藏夹文件
     parseEdgeBookmarks(bookmarksPath, keyword);
+
+    // 获取用户桌面路径
+    WCHAR desktopPath[MAX_PATH];
+    if (SUCCEEDED(SHGetFolderPathW(NULL, CSIDL_DESKTOPDIRECTORY, NULL, 0, desktopPath))) {
+        searchDirectory(wstringToUTF8(desktopPath), keyword);
+    }
+
+    // 获取用户文档路径
+    WCHAR documentsPath[MAX_PATH];
+    if (SUCCEEDED(SHGetFolderPathW(NULL, CSIDL_MYDOCUMENTS, NULL, 0, documentsPath))) {
+        searchDirectory(wstringToUTF8(documentsPath), keyword);
+    }
+
+    // 获取用户下载路径
+    WCHAR downloadsPath[MAX_PATH];
+    if (SUCCEEDED(SHGetFolderPathW(NULL, CSIDL_DOWNLOADS, NULL, 0, downloadsPath))) {
+        searchDirectory(wstringToUTF8(downloadsPath), keyword);
+    }
 
     return 0;
 }
