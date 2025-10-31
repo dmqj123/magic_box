@@ -33,29 +33,24 @@ List<ResultItemCard> result_items = [];
 
 List<plugin> plugins = [
   //TEST
-  plugin(
-    name: "FileSearch",
-    path:
-        "J:\\zzx\\Code\\Flutter\\magic_box\\plugins_dev\\FileSearch\\x64\\Debug\\FileSearch.exe",
-    version: "1.0.0",
-    icon_path: "C:\\Users\\abcdef\\Downloads\\aQjQWax4Tl.jpg",
-  ),
-  plugin(
-    name: "AppSearch",
-    path:
-        "J:\\zzx\\Code\\Flutter\\magic_box\\plugins_dev\\AppSearch\\Debug\\AppSearch.exe",
-    version: "1.0.0",
-    //icon_path: "C:\\Users\\abcdef\\Downloads\\aQjQWax4Tl.jpg",
-  ),
-
-  /*
+  // plugin(
+  //   name: "FileSearch",
+  //   path: "plugins_dev\\FileSearch\\FileSearch.exe",
+  //   version: "1.0.0",
+  //   icon_path: "C:\\Users\\abcdef\\Downloads\\aQjQWax4Tl.jpg",
+  // ),
+  // plugin(
+  //   name: "AppSearch",
+  //   path: "plugins_dev\\AppSearch\\AppSearch.exe",
+  //   version: "1.0.0",
+  //   //icon_path: "C:\\Users\\abcdef\\Downloads\\aQjQWax4Tl.jpg",
+  // ),
   plugin(
     name: "WebSearch",
-    path:
-        "J:\\zzx\\Code\\Flutter\\magic_box\\plugins_dev\\WebSearch\\Debug\\WebSearch.exe",
+    path: "plugins_dev\\WebSearch\\WebSearch.exe",
     version: "1.0.0",
     //icon_path: "C:\\Users\\abcdef\\Downloads\\aQjQWax4Tl.jpg",
-  ),*/
+  ),
 ];
 
 List<plugin> getPlugins() {
@@ -115,13 +110,16 @@ Future<List<ResultItemCard>> getResultItems(
         // 尝试解析JSON以获取编码信息
         String? encodingFromJson;
         try {
-          final decodedJson = jsonDecode(rawOutput.split("next_result")[0]);
-          if (decodedJson is Map<String, dynamic>) {
-            encodingFromJson = decodedJson['encoding']?.toString();
-          } else if (decodedJson is List && decodedJson.isNotEmpty) {
-            final firstItem = decodedJson[0];
-            if (firstItem is Map<String, dynamic>) {
-              encodingFromJson = firstItem['encoding']?.toString();
+          // 只在rawOutput不为空时尝试解析JSON
+          if (rawOutput.trim().isNotEmpty) {
+            final decodedJson = jsonDecode(rawOutput.split("next_result")[0]);
+            if (decodedJson is Map<String, dynamic>) {
+              encodingFromJson = decodedJson['encoding']?.toString();
+            } else if (decodedJson is List && decodedJson.isNotEmpty) {
+              final firstItem = decodedJson[0];
+              if (firstItem is Map<String, dynamic>) {
+                encodingFromJson = firstItem['encoding']?.toString();
+              }
             }
           }
         } catch (e) {
@@ -129,8 +127,14 @@ Future<List<ResultItemCard>> getResultItems(
         }
 
         // 根据JSON中的编码信息或默认编码来解码输出
+        // 不再重新监听process.stdout，而是使用已经读取的rawOutput
         Encoding encoding = getEncodingByName(encodingFromJson);
-        rawOutput = await process.stdout.transform(encoding.decoder).join();
+        // 如果编码不同，需要重新解码
+        if (encoding != systemEncoding) {
+          // 这里我们假设插件输出的是UTF-8编码，但标记为其他编码
+          // 在实际应用中，可能需要更复杂的处理
+          // 暂时我们直接使用rawOutput
+        }
 
         results = AddResultItemCardFromJson(
           rawOutput,
@@ -184,14 +188,10 @@ List<ResultItemCard>? AddResultItemCardFromJson(
           decodedJson.map<ResultItemCard>((item) {
             return ResultItemCard(
               title: item['title']?.toString() ?? '未命名',
-              content:
-                  item['content']?.toString().replaceAll('\\', '\\') ?? '路径未知',
-              cmd: item['cmd']?.toString().replaceAll('\\', '\\'),
+              content: item['content']?.toString() ?? '路径未知',
+              cmd: item['cmd']?.toString(),
               image_path: plugin_image_path,
-              preview_path: item['preview_path']?.toString().replaceAll(
-                '\\',
-                '\\',
-              ),
+              preview_path: item['preview_path']?.toString(),
               encoding:
                   item['encoding']?.toString() ??
                   encoding, // 如果没有encoding键，则使用传入的编码
@@ -202,15 +202,10 @@ List<ResultItemCard>? AddResultItemCardFromJson(
         allResults.add(
           ResultItemCard(
             title: decodedJson['title']?.toString() ?? '未命名',
-            content:
-                decodedJson['content']?.toString().replaceAll('\\', '\\') ??
-                '路径未知',
-            cmd: decodedJson['cmd']?.toString().replaceAll('\\', '\\'),
+            content: decodedJson['content']?.toString() ?? '路径未知',
+            cmd: decodedJson['cmd']?.toString(),
             image_path: plugin_image_path,
-            preview_path: decodedJson['preview_path']?.toString().replaceAll(
-              '\\',
-              '\\',
-            ),
+            preview_path: decodedJson['preview_path']?.toString(),
             encoding:
                 decodedJson['encoding']?.toString() ??
                 encoding, // 如果没有encoding键，则使用传入的编码

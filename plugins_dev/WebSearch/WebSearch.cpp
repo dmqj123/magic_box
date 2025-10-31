@@ -1,280 +1,309 @@
-﻿#include <iostream>
-#include <fstream>
+#include <iostream>
 #include <string>
 #include <vector>
 #include <windows.h>
-#include <shlwapi.h>
-#include <shellapi.h>
-#include <knownfolders.h>
-#include <objbase.h>
-#include <ShlObj_core.h>
-
-#pragma comment(lib, "shlwapi.lib")
+#include <shlobj.h>
+#include <fstream>
+#include <sstream>
 #pragma comment(lib, "shell32.lib")
-#pragma comment(lib, "ole32.lib")
 
-using namespace std;
-
-// 函数声明
-wstring GetCurrentUserFolder();
-bool ParseCommandLine(int argc, wchar_t* argv[], wstring& keyword);
-wstring ReadFileContent(const wstring& filePath);
-void ParseJsonAndSearch(const wstring& jsonContent, const wstring& keyword);
-void ProcessNode(const wstring& nodeContent, const wstring& keyword, bool& firstResult);
-wstring ExtractValue(const wstring& content, const wstring& key);
-vector<wstring> ExtractChildren(const wstring& content);
-string WideToUtf8(const wstring& wstr);  // 修正返回类型为string
-wstring Utf8ToWide(const string& str);
-
-int wmain(int argc, wchar_t* argv[]) {
-    // 设置控制台输出为UTF-8
-    SetConsoleOutputCP(CP_UTF8);
-
-    // 解析命令行参数
-    wstring keyword;
-    if (!ParseCommandLine(argc, argv, keyword)) {
-        return 0;
+// 将字符串转换为小写
+std::string toLower(const std::string& str) {
+    std::string lowerStr;
+    for (char c : str) {
+        lowerStr += tolower(c);
     }
-
-    // 获取当前用户的收藏夹路径
-    wstring userFolder = GetCurrentUserFolder();
-    if (userFolder.empty()) {
-        wcerr << L"无法获取当前用户目录" << endl;
-        return 1;
-    }
-
-    wstring bookmarksPath = userFolder + L"AppData\\Local\\Microsoft\\Edge\\User Data\\Default\\Bookmarks";
-
-    // 读取收藏夹内容
-    wstring jsonContent = ReadFileContent(bookmarksPath);
-    if (jsonContent.empty()) {
-        wcerr << L"无法读取收藏夹文件: " << bookmarksPath << endl;
-        return 1;
-    }
-
-    // 解析JSON并搜索匹配项
-    ParseJsonAndSearch(jsonContent, keyword);
-
-    return 0;
+    return lowerStr;
 }
 
-// 获取当前用户目录（使用新的API）
-wstring GetCurrentUserFolder() {
-    PWSTR path = nullptr;
-    HRESULT hr = SHGetKnownFolderPath(FOLDERID_Profile, 0, NULL, &path);
-    if (SUCCEEDED(hr) && path != nullptr) {
-        wstring result(path);
-        CoTaskMemFree(path);  // 释放内存
-        return result + L"\\";
+// 将宽字符串转换为小写
+std::wstring toLower(const std::wstring& str) {
+    std::wstring lowerStr;
+    for (wchar_t c : str) {
+        lowerStr += towlower(c);
     }
-    return L"";
+    return lowerStr;
 }
 
-// 解析命令行参数
-bool ParseCommandLine(int argc, wchar_t* argv[], wstring& keyword) {
-    if (argc < 3 || wcscmp(argv[1], L"-k") != 0) {
-        return false;
-    }
-
-    keyword = argv[2];
-    return !keyword.empty();
-}
-
-// 读取文件内容（UTF-8）
-wstring ReadFileContent(const wstring& filePath) {
-    // 改用ifstream（窄字符流）读取二进制内容，避免宽字符流的类型问题
-    ifstream file(filePath, ios::binary);
-    if (!file.is_open()) {
-        return L"";
-    }
-
-    // 获取文件大小，显式转换避免警告
-    file.seekg(0, ios::end);
-    size_t fileSize = static_cast<size_t>(file.tellg());
-    file.seekg(0, ios::beg);
-
-    // 读取原始字节到string（UTF-8）
-    string utf8Content(fileSize, '\0');
-    file.read(&utf8Content[0], fileSize);
-    file.close();
-
-    // 转换为宽字符串
-    return Utf8ToWide(utf8Content);
-}
-
-// 解析JSON并搜索匹配项
-void ParseJsonAndSearch(const wstring& jsonContent, const wstring& keyword) {
-    // 找到roots节点
-    size_t rootsPos = jsonContent.find(L"\"roots\"");
-    if (rootsPos == wstring::npos) {
-        return;
-    }
-
-    size_t start = jsonContent.find(L'{', rootsPos);
-    if (start == wstring::npos) {
-        return;
-    }
-
-    size_t end = jsonContent.find(L'}', start);
-    if (end == wstring::npos) {
-        return;
-    }
-
-    wstring rootsContent = jsonContent.substr(start, end - start + 1);
-    bool firstResult = true;
-
-    // 处理各个根节点
-    vector<wstring> rootNodes = { L"bookmark_bar", L"other", L"synced", L"workspaces" };
-    for (const auto& node : rootNodes) {
-        size_t nodePos = rootsContent.find(L"\"" + node + L"\"");
-        if (nodePos == wstring::npos) {
-            continue;
-        }
-
-        size_t nodeStart = rootsContent.find(L'{', nodePos);
-        if (nodeStart == wstring::npos) {
-            continue;
-        }
-
-        // 找到对应的闭合括号
-        int braceCount = 1;
-        size_t nodeEnd = nodeStart + 1;
-        while (nodeEnd < rootsContent.size() && braceCount > 0) {
-            if (rootsContent[nodeEnd] == L'{') {
-                braceCount++;
-            }
-            else if (rootsContent[nodeEnd] == L'}') {
-                braceCount--;
-            }
-            nodeEnd++;
-        }
-
-        wstring nodeContent = rootsContent.substr(nodeStart, nodeEnd - nodeStart);
-        ProcessNode(nodeContent, keyword, firstResult);
-    }
-}
-
-// 处理节点内容
-void ProcessNode(const wstring& nodeContent, const wstring& keyword, bool& firstResult) {
-    // 提取类型
-    wstring type = ExtractValue(nodeContent, L"type");
-
-    // 如果是URL类型，检查是否匹配
-    if (type == L"url") {
-        wstring name = ExtractValue(nodeContent, L"name");
-        wstring url = ExtractValue(nodeContent, L"url");
-
-        // 检查名称是否包含关键词（不区分大小写）
-        if (name.find(keyword) != wstring::npos) {
-            // 准备输出
-            if (!firstResult) {
-                cout << "\n\nnext_result" << endl;
-            }
-            firstResult = false;
-
-            // 转换为UTF-8
-            string title = WideToUtf8(name);
-            string content = WideToUtf8(url);
-            string cmd = "explorer.exe \"" + content + "\"";
-
-            // 输出JSON
-            cout << "{";
-            cout << "\"title\":\"" << title << "\",";
-            cout << "\"content\":\"" << content << "\",";
-            cout << "\"cmd\":\"" << cmd << "\"";
-            cout << "}" << endl;
-
-            // 刷新输出缓冲区，确保实时输出
-            cout.flush();
-        }
-    }
-    // 如果是文件夹类型，处理子节点
-    else if (type == L"folder" || type == L"workspace") {
-        vector<wstring> children = ExtractChildren(nodeContent);
-        for (const auto& child : children) {
-            ProcessNode(child, keyword, firstResult);
-        }
-    }
-}
-
-// 提取JSON值
-wstring ExtractValue(const wstring& content, const wstring& key) {
-    size_t keyPos = content.find(L"\"" + key + L"\":");
-    if (keyPos == wstring::npos) {
-        return L"";
-    }
-
-    size_t valueStart = content.find(L"\"", keyPos + key.length() + 3);
-    if (valueStart == wstring::npos) {
-        return L"";
-    }
-
-    size_t valueEnd = content.find(L"\"", valueStart + 1);
-    if (valueEnd == wstring::npos) {
-        return L"";
-    }
-
-    return content.substr(valueStart + 1, valueEnd - valueStart - 1);
-}
-
-// 提取子节点
-vector<wstring> ExtractChildren(const wstring& content) {
-    vector<wstring> children;
-
-    size_t childrenPos = content.find(L"\"children\"");
-    if (childrenPos == wstring::npos) {
-        return children;
-    }
-
-    size_t arrayStart = content.find(L'[', childrenPos);
-    if (arrayStart == wstring::npos) {
-        return children;
-    }
-
-    size_t arrayEnd = content.find(L']', arrayStart);
-    if (arrayEnd == wstring::npos) {
-        return children;
-    }
-
-    wstring arrayContent = content.substr(arrayStart + 1, arrayEnd - arrayStart - 1);
-    size_t pos = 0;
-    int braceCount = 0;
-    size_t nodeStart = wstring::npos;
-
-    while (pos < arrayContent.size()) {
-        if (arrayContent[pos] == L'{') {
-            if (nodeStart == wstring::npos) {
-                nodeStart = pos;
-            }
-            braceCount++;
-        }
-        else if (arrayContent[pos] == L'}') {
-            braceCount--;
-            if (braceCount == 0 && nodeStart != wstring::npos) {
-                children.push_back(arrayContent.substr(nodeStart, pos - nodeStart + 1));
-                nodeStart = wstring::npos;
-            }
-        }
-        pos++;
-    }
-
-    return children;
-}
-
-// 宽字符串转UTF-8（修正为返回string）
-string WideToUtf8(const wstring& wstr) {
-    if (wstr.empty()) return "";
+// 将宽字符串转换为UTF-8字符串
+std::string wstringToUTF8(const std::wstring& wstr) {
+    if (wstr.empty()) return std::string();
     int size_needed = WideCharToMultiByte(CP_UTF8, 0, &wstr[0], (int)wstr.size(), NULL, 0, NULL, NULL);
-    string strTo(size_needed, 0);
+    std::string strTo(size_needed, 0);
     WideCharToMultiByte(CP_UTF8, 0, &wstr[0], (int)wstr.size(), &strTo[0], size_needed, NULL, NULL);
     return strTo;
 }
 
-// UTF-8转宽字符串
-wstring Utf8ToWide(const string& str) {
-    if (str.empty()) return L"";
+// 将UTF-8字符串转换为宽字符串
+std::wstring utf8ToWstring(const std::string& str) {
+    if (str.empty()) return std::wstring();
     int size_needed = MultiByteToWideChar(CP_UTF8, 0, &str[0], (int)str.size(), NULL, 0);
-    wstring wstrTo(size_needed, 0);
+    std::wstring wstrTo(size_needed, 0);
     MultiByteToWideChar(CP_UTF8, 0, &str[0], (int)str.size(), &wstrTo[0], size_needed);
     return wstrTo;
+}
+
+// 转义JSON字符串中的特殊字符
+std::string escapeJsonString(const std::string& str) {
+    std::string output;
+    for (char c : str) {
+        switch (c) {
+        case '"':  output += "\\\""; break;
+        case '\\': output += "\\\\"; break;
+        case '\b': output += "\\b";  break;
+        case '\f': output += "\\f";  break;
+        case '\n': output += "\\n";  break;
+        case '\r': output += "\\r";  break;
+        case '\t': output += "\\t";  break;
+        default:   output += c;      break;
+        }
+    }
+    return output;
+}
+
+// 从URL中提取域名
+std::string extractDomain(const std::string& url) {
+    std::string domain;
+    
+    // 查找协议部分（http://或https://）
+    size_t protocolPos = url.find("://");
+    size_t startPos = 0;
+    
+    if (protocolPos != std::string::npos) {
+        startPos = protocolPos + 3; // 跳过 "://"
+    }
+    
+    // 查找域名结束位置（第一个斜杠或问号）
+    size_t endPos = url.find_first_of("/?", startPos);
+    
+    if (endPos != std::string::npos) {
+        domain = url.substr(startPos, endPos - startPos);
+    } else {
+        domain = url.substr(startPos);
+    }
+    
+    return domain;
+}
+
+// 构造可能的logo URL
+std::string getLogoUrl(const std::string& url) {
+    std::string domain = extractDomain(url);
+    
+    // 如果域名为空，返回空字符串
+    if (domain.empty()) {
+        return "";
+    }
+    
+    // 构造favicon URL
+    std::string logoUrl = "http://" + domain + "/favicon.ico";
+    
+    return logoUrl;
+}
+
+// 检查文件扩展名是否符合收藏夹要求
+bool isValidExtension(const std::string& filename) {
+    // 获取文件扩展名（小写）
+    size_t dotPos = filename.find_last_of('.');
+    if (dotPos == std::string::npos) return false;
+
+    std::string ext = toLower(filename.substr(dotPos));
+
+    // 收藏夹文件通常为.url或.htm/.html格式
+    const std::vector<std::string> allowedExtensions = {
+        ".url", ".htm", ".html"
+    };
+
+    // 检查是否在允许列表中
+    for (const auto& allowed : allowedExtensions) {
+        if (ext == allowed) return true;
+    }
+
+    return false;
+}
+
+// 递归搜索目录
+void searchDirectory(const std::string& path, const std::wstring& keyword) {
+    WIN32_FIND_DATAW findData;
+    HANDLE hFind;
+    std::wstring wPath = utf8ToWstring(path);
+    std::wstring searchPath = wPath + L"\\*";
+
+    hFind = FindFirstFileW(searchPath.c_str(), &findData);
+    if (hFind == INVALID_HANDLE_VALUE) {
+        return;
+    }
+
+    do {
+        if (findData.cFileName[0] == L'.') {
+            continue; // 跳过 "." 和 ".."
+        }
+
+        std::wstring wFileName(findData.cFileName);
+        std::wstring wFullPath = wPath + L"\\" + wFileName;
+        std::string fullPath = wstringToUTF8(wFullPath);
+        std::string filename = wstringToUTF8(wFileName);
+
+        if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+            // 递归搜索子目录
+            searchDirectory(fullPath, keyword);
+        }
+        else {
+            // 检查文件扩展名
+            if (!isValidExtension(filename)) {
+                continue;
+            }
+
+            // 检查文件名是否包含关键字
+            std::wstring wLowerName = toLower(wFileName);
+
+            if (wLowerName.find(keyword) != std::wstring::npos) {
+                // 构造打开浏览器的命令
+                std::string openCmd = "explorer.exe \"" + fullPath + "\"";
+                
+                // 获取文件扩展名（小写）
+                size_t dotPos = filename.find_last_of('.');
+                std::string ext = dotPos != std::string::npos ? toLower(filename.substr(dotPos)) : "";
+
+                // 输出JSON格式结果
+                std::cout << "{"
+                    << "\"title\":\"" << escapeJsonString(filename) << "\","
+                    << "\"content\":\"" << escapeJsonString(fullPath) << "\","
+                    << "\"cmd\":\"" << escapeJsonString(openCmd) << "\""
+                    << "}\n"
+                    << "\nnext_result\n";
+            }
+        }
+    } while (FindNextFileW(hFind, &findData));
+
+    FindClose(hFind);
+}
+
+// 获取Edge浏览器收藏夹文件路径
+std::string getEdgeBookmarksPath() {
+    WCHAR userProfile[MAX_PATH];
+    if (SUCCEEDED(SHGetFolderPathW(NULL, CSIDL_PROFILE, NULL, 0, userProfile))) {
+        std::wstring wBookmarksPath(userProfile);
+        wBookmarksPath += L"\\AppData\\Local\\Microsoft\\Edge\\User Data\\Default\\Bookmarks";
+        return wstringToUTF8(wBookmarksPath);
+    }
+    return "";
+}
+
+// 解析Edge收藏夹JSON文件
+void parseEdgeBookmarks(const std::string& bookmarksPath, const std::wstring& keyword) {
+    std::ifstream file(bookmarksPath);
+    if (!file.is_open()) {
+        return;
+    }
+
+    std::stringstream buffer;
+    buffer << file.rdbuf();
+    std::string content = buffer.str();
+    file.close();
+    
+    size_t pos = 0;
+    while ((pos = content.find("\"name\"", pos)) != std::string::npos) {
+        // 找到name字段的值
+        size_t nameStart = content.find("\"", pos + 6);
+        if (nameStart == std::string::npos) break;
+        nameStart++; // 跳过开头的引号
+        
+        size_t nameEnd = content.find("\"", nameStart);
+        if (nameEnd == std::string::npos) break;
+        
+        std::string name = content.substr(nameStart, nameEnd - nameStart);
+        std::wstring wLowerName = toLower(utf8ToWstring(name));
+        
+        // 检查名称是否包含关键字
+        if (wLowerName.find(keyword) != std::wstring::npos) {
+            // 找到对应的URL
+            size_t urlPos = content.find("\"url\"", nameEnd);
+            if (urlPos != std::string::npos) {
+                size_t colonPos = content.find(":", urlPos + 5); // 找到冒号
+                if (colonPos != std::string::npos) {
+                    size_t urlStart = content.find("\"", colonPos); // 找到URL值的开始引号
+                    if (urlStart != std::string::npos) {
+                        urlStart++; // 跳过开头的引号
+                        size_t urlEnd = content.find("\"", urlStart); // 找到URL值的结束引号
+                        if (urlEnd != std::string::npos) {
+                            std::string url = content.substr(urlStart, urlEnd - urlStart);
+                            
+                            // 获取网站logo URL
+                            std::string logoUrl = getLogoUrl(url);
+                            
+                            // 输出JSON格式结果
+                            std::cout << "{"
+                                << "\"title\":\"" << escapeJsonString(name) << "\","
+                                << "\"content\":\"" << escapeJsonString(url) << "\","
+                                << "\"cmd\":\"explorer.exe \\\"" + escapeJsonString(url) + "\\\"\"";
+                            
+                            // 如果logo URL不为空，则添加preview_path字段，值为logo URL
+                            if (!logoUrl.empty()) {
+                                std::cout << ",\"preview_path\":\"" << escapeJsonString(logoUrl) << "\"";
+                            }
+                            
+                            std::cout << "}\n"
+                                << "\nnext_result\n";
+                        }
+                    }
+                }
+            }
+        }
+        
+        pos = nameEnd;
+    }
+}
+
+int wmain(int argc, wchar_t* argv[]) {
+    // 设置控制台代码页为UTF-8以支持中文字符
+    SetConsoleOutputCP(CP_UTF8);
+    SetConsoleCP(CP_UTF8);
+    
+    // 检查命令行参数
+    if (argc != 3 || std::wstring(argv[1]) != L"-k") {
+        // 注意：这里使用wprintf而不是std::wcerr，因为std::wcerr可能在某些环境下输出乱码
+        wprintf(L"Usage: %ls -k <keyword>\n", argv[0]);
+        return 1;
+    }
+
+    std::wstring keyword = toLower(argv[2]);  // 获取并转换为小写关键字
+
+    // 如果关键字为空，则直接退出
+    if (keyword.empty()) {
+        return 0;
+    }
+
+    // 获取Edge浏览器收藏夹文件路径
+    std::string bookmarksPath = getEdgeBookmarksPath();
+    
+// 检查文件是否存在
+    std::wstring wBookmarksPath = utf8ToWstring(bookmarksPath);
+    DWORD attributes = GetFileAttributesW(wBookmarksPath.c_str());
+    if (attributes == INVALID_FILE_ATTRIBUTES || (attributes & FILE_ATTRIBUTE_DIRECTORY)) {
+        wprintf(L"//Edge bookmarks file not found\n");
+        return 1;
+    }
+
+    // 解析Edge收藏夹文件
+    parseEdgeBookmarks(bookmarksPath, keyword);
+
+    // 获取用户桌面路径
+    WCHAR desktopPath[MAX_PATH];
+    if (SUCCEEDED(SHGetFolderPathW(NULL, CSIDL_DESKTOPDIRECTORY, NULL, 0, desktopPath))) {
+        searchDirectory(wstringToUTF8(desktopPath), keyword);
+    }
+
+    // 获取用户文档路径
+    WCHAR documentsPath[MAX_PATH];
+    if (SUCCEEDED(SHGetFolderPathW(NULL, CSIDL_MYDOCUMENTS, NULL, 0, documentsPath))) {
+        searchDirectory(wstringToUTF8(documentsPath), keyword);
+    }
+
+    // 获取用户下载路径
+    WCHAR downloadsPath[MAX_PATH];
+    if (SUCCEEDED(SHGetFolderPathW(NULL, CSIDL_DOWNLOADS, NULL, 0, downloadsPath))) {
+        searchDirectory(wstringToUTF8(downloadsPath), keyword);
+    }
+
+    return 0;
 }

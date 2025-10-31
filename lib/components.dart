@@ -130,15 +130,24 @@ class _ResultItemCardState extends State<ResultItemCard> {
                     ],
                   ),
                 ),
-                if (widget.preview_path != null)
+                if (widget.preview_path != null &&
+                    widget.preview_path!.isNotEmpty)
                   ClipRRect(
                     borderRadius: BorderRadius.circular(8.0),
-                    child: Image.file(
-                      File(widget.preview_path!),
-                      width: WINDOW_WIDTH / 12,
-                      height: WINDOW_WIDTH / 12,
-                      fit: BoxFit.cover,
-                    ),
+                    child: widget.preview_path!.startsWith('http://') || 
+                          widget.preview_path!.startsWith('https://') 
+                        ? Image.network(
+                            widget.preview_path!,
+                            width: WINDOW_WIDTH / 12,
+                            height: WINDOW_WIDTH / 12,
+                            fit: BoxFit.cover,
+                          )
+                        : Image.file(
+                            File(widget.preview_path!),
+                            width: WINDOW_WIDTH / 12,
+                            height: WINDOW_WIDTH / 12,
+                            fit: BoxFit.cover,
+                          ),
                   ),
                 if (_hasFocus)
                   Center(
