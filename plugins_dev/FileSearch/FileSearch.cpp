@@ -3,6 +3,10 @@
 #include <vector>
 #include <windows.h>
 #include <shlobj.h>
+#include <io.h>
+#include <fcntl.h>
+#include <codecvt>
+#include <locale>
 
 // 确保所有CSIDL常量都有定义
 #ifndef CSIDL_DESKTOP
@@ -71,28 +75,30 @@ bool isValidExtension(const std::string& filename) {
 
 // 递归搜索目录
 void searchDirectory(const std::string& path, const std::string& keyword) {
-    WIN32_FIND_DATAA findData;
-    HANDLE hFind;
-    std::string searchPath = path + "\\*";
+    // 转换路径为宽字符
+    std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+    std::wstring pathWide = converter.from_bytes(path);
+    std::wstring searchPath = pathWide + L"\\*";
 
-    hFind = FindFirstFileA(searchPath.c_str(), &findData);
+    WIN32_FIND_DATAW findData;
+    HANDLE hFind = FindFirstFileW(searchPath.c_str(), &findData);
     if (hFind == INVALID_HANDLE_VALUE) {
         return;
     }
 
     do {
-        if (findData.cFileName[0] == '.') {
+        if (findData.cFileName[0] == L'.') {
             continue; // 跳过 "." 和 ".."
         }
 
-        std::string fullPath = path + "\\" + findData.cFileName;
+        std::wstring fullPath = pathWide + L"\\" + findData.cFileName;
 
         if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
             // 递归搜索子目录
-            searchDirectory(fullPath, keyword);
+            searchDirectory(converter.to_bytes(fullPath), keyword);
         }
         else {
-            std::string filename = findData.cFileName;
+            std::string filename = converter.to_bytes(findData.cFileName);
 
             // 检查文件扩展名
             if (!isValidExtension(filename)) {
@@ -104,34 +110,40 @@ void searchDirectory(const std::string& path, const std::string& keyword) {
 
             if (lowerName.find(keyword) != std::string::npos) {
                 // 构造打开文件资源管理器的命令
-                std::string openCmd = "explorer.exe \"" + fullPath + "\"";
-                // 获取文件扩展名（小写）
-                size_t dotPos = filename.find_last_of('.');
-                std::string ext = dotPos != std::string::npos ? toLower(filename.substr(dotPos)) : "";
-
-                // 输出JSON格式结果
-                std::cout << "{"
-                    << "\"title\":\"" << escapeJsonString(filename) << "\","
-                    << "\"content\":\"" << escapeJsonString(fullPath) << "\","
-                    << "\"cmd\":\"" << escapeJsonString(openCmd) << "\""
-                    << (ext == ".png" || ext == ".jpg" || ext == ".jpeg" ? ",\"preview_path\":\"" + escapeJsonString(fullPath) + "\"" : "")
-                    << "}\n"
-                    << "\nnext_result\n";
+                std::string openCmd = "explorer.exe \"" + converter.to_bytes(fullPath) + "\"";
+                
+                // 输出JSON格式结果，使用logo URL代替preview_path
+                std::wcout << L"{"
+                    << L"\"title\":\"" << converter.from_bytes(escapeJsonString(filename)) << L"\","
+                    << L"\"content\":\"" << converter.from_bytes(escapeJsonString(converter.to_bytes(fullPath))) << L"\","
+                    << L"\"cmd\":\"" << converter.from_bytes(escapeJsonString(openCmd)) << L"\""
+                    << L"}\n"
+                    << L"\nnext_result\n";
             }
         }
-    } while (FindNextFileA(hFind, &findData));
+    } while (FindNextFileW(hFind, &findData));
 
     FindClose(hFind);
 }
 
 int main(int argc, char* argv[]) {
+    // 设置控制台输出为UTF-8
+    SetConsoleOutputCP(CP_UTF8);
+    _setmode(_fileno(stdout), _O_U8TEXT);
+    std::wcout.imbue(std::locale("en_US.UTF-8"));
+    std::wcin.imbue(std::locale("en_US.UTF-8"));
+
     // 检查命令行参数
     if (argc != 3 || std::string(argv[1]) != "-k") {
         std::cerr << "Usage: " << argv[0] << " -k <keyword>\n";
         return 1;
     }
 
-    std::string keyword = toLower(argv[2]);  // 获取并转换为小写关键字
+    // 转换关键字为UTF-8
+    std::string keywordArg = argv[2];
+    std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+    std::wstring keywordWide = converter.from_bytes(keywordArg);
+    std::string keyword = toLower(converter.to_bytes(keywordWide));  // 获取并转换为小写关键字
 
     // 如果关键字为空，则直接退出
     if (keyword.empty()) {
