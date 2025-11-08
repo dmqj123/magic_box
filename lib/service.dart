@@ -38,7 +38,7 @@ List<ResultItemCard> result_items = [];
 
 List<Plugin> plugins = [
   //TEST
-  Plugin(
+  /*Plugin(
     name: "FileSearch",
     path:
         "J:\\zzx\\Code\\Flutter\\magic_box\\plugins_dev\\FileSearch\\x64\\Debug\\FileSearch.exe",
@@ -54,7 +54,7 @@ List<Plugin> plugins = [
     //icon_path: "C:\\Users\\abcdef\\Downloads\\aQjQWax4Tl.jpg",
   ),
 
-  /*plugin(
+  plugin(
     name: "WebSearch",
     path:
         "J:\\zzx\\Code\\Flutter\\magic_box\\plugins_dev\\WebSearch\\Debug\\WebSearch.exe",
