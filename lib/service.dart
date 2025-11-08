@@ -63,6 +63,15 @@ List<plugin> plugins = [
   ),*/
 ];
 
+Future<void> savePlugins() async {
+  sharedPreferences = await SharedPreferences.getInstance();
+  List<String> plugins_str_list = [];
+  for(plugin item in plugins){
+    plugins_str_list.add(item.toJson().toString());
+  }
+  await sharedPreferences?.setStringList("plugins", plugins_str_list);
+}
+
 Future<void> addPlugin(String package_path) async {
   //添加插件
   //解压插件包至临时目录
@@ -126,6 +135,10 @@ Future<void> addPlugin(String package_path) async {
         Directory(new_path),
       );
       //TODO 添加至插件列表中
+      //如果plugins中已存在同名插件
+      if (plugins.any((element) => element.name == name)) {
+        plugins.removeWhere((element) => element.name == name);
+      }
       plugins.add(
         plugin(
           name: name,
@@ -134,6 +147,7 @@ Future<void> addPlugin(String package_path) async {
           icon_path: '$new_path/$icon_path',
         ),
       );
+      await savePlugins();
     }
   } else {
     //错误处理
@@ -141,9 +155,16 @@ Future<void> addPlugin(String package_path) async {
 }
 
 Future<List<plugin>> getPlugins() async {
-  print(getApplicationSupportDirectory());
+  List<plugin> _plugins = [];
   sharedPreferences = await SharedPreferences.getInstance();
-  //TODO 从配置文件读取插件
+  List<String>? plugins_str_list = sharedPreferences?.getStringList("plugins");
+  if (plugins_str_list != null) {
+    for (String item in plugins_str_list) {
+      var json_str = jsonDecode(item);
+      _plugins.add(plugin(name: json_str["main"], path: json_str["path"], version: json_str["version"],icon_path: json_str["icon_path"]));
+    }
+  }
+  plugins = _plugins;
   return plugins;
 }
 
