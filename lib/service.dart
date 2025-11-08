@@ -33,21 +33,25 @@ List<ResultItemCard> result_items = [];
 
 List<plugin> plugins = [
   //TEST
-  // plugin(
-  //   name: "FileSearch",
-  //   path: "plugins_dev\\FileSearch\\FileSearch.exe",
-  //   version: "1.0.0",
-  //   icon_path: "C:\\Users\\abcdef\\Downloads\\aQjQWax4Tl.jpg",
-  // ),
-  // plugin(
-  //   name: "AppSearch",
-  //   path: "plugins_dev\\AppSearch\\AppSearch.exe",
-  //   version: "1.0.0",
-  //   //icon_path: "C:\\Users\\abcdef\\Downloads\\aQjQWax4Tl.jpg",
-  // ),
+  plugin(
+    name: "FileSearch",
+    path:
+        "J:\\zzx\\Code\\Flutter\\magic_box\\plugins_dev\\FileSearch\\x64\\Debug\\FileSearch.exe",
+    version: "1.0.0",
+    //icon_path: "C:\\Users\\abcdef\\Downloads\\aQjQWax4Tl.jpg",
+  ),
+  plugin(
+    name: "AppSearch",
+    path:
+        "J:\\zzx\\Code\\Flutter\\magic_box\\plugins_dev\\AppSearch\\Debug\\AppSearch.exe",
+    version: "1.0.0",
+    //icon_path: "C:\\Users\\abcdef\\Downloads\\aQjQWax4Tl.jpg",
+  ),
+  
   plugin(
     name: "WebSearch",
-    path: "plugins_dev\\WebSearch\\WebSearch.exe",
+    path:
+        "J:\\zzx\\Code\\Flutter\\magic_box\\plugins_dev\\WebSearch\\Debug\\WebSearch.exe",
     version: "1.0.0",
     //icon_path: "C:\\Users\\abcdef\\Downloads\\aQjQWax4Tl.jpg",
   ),
@@ -103,9 +107,30 @@ Future<List<ResultItemCard>> getResultItems(
         print('实时结果: $data');
       });*/
         //获取全部结果
-        // 首先读取进程的输出
-        String rawOutput =
-            await process.stdout.transform(systemEncoding.decoder).join();
+        // 首先读取进程的输出 as raw bytes to handle encoding properly
+        List<int> rawOutputBytes = [];
+        await for (List<int> chunk in process.stdout) {
+          rawOutputBytes.addAll(chunk);
+        }
+        
+        String rawOutput;
+        try {
+          // Try to decode as UTF-8 first
+          rawOutput = utf8.decode(rawOutputBytes);
+        } catch (e) {
+          // If UTF-8 fails, try other encodings or handle error gracefully
+          print('UTF-8 decoding failed: $e');
+          try {
+            // If you're on a Chinese system, you might want to try GBK encoding
+            // Since Dart doesn't have GBK built-in, we would use the convert package
+            // For now, we'll try Latin1 as a fallback which preserves the bytes
+            rawOutput = latin1.decode(rawOutputBytes);
+          } catch (e2) {
+            print('Fallback encoding also failed: $e2');
+            // As a last resort, try to decode with error handling
+            rawOutput = utf8.decode(rawOutputBytes, allowMalformed: true);
+          }
+        }
 
         // 尝试解析JSON以获取编码信息
         String? encodingFromJson;

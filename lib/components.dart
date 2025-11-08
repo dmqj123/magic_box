@@ -141,12 +141,18 @@ class _ResultItemCardState extends State<ResultItemCard> {
                             width: WINDOW_WIDTH / 12,
                             height: WINDOW_WIDTH / 12,
                             fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Icon(Icons.error, color: Colors.red);
+                            },
                           )
                         : Image.file(
                             File(widget.preview_path!),
                             width: WINDOW_WIDTH / 12,
                             height: WINDOW_WIDTH / 12,
                             fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Icon(Icons.error, color: Colors.red);
+                            },
                           ),
                   ),
                 if (_hasFocus)

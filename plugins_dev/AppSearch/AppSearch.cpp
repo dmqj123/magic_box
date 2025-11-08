@@ -12,8 +12,6 @@
 #include <codecvt>
 #include <locale>
 #include <iostream>
-#include <io.h>
-#include <fcntl.h>
 
 #pragma comment(lib, "shlwapi.lib")
 #pragma comment(lib, "gdiplus.lib")
@@ -238,16 +236,17 @@ void ScanShortcuts(const wstring& searchPath, const wstring& keyword, set<wstrin
                                 iconPath = SaveIconToTemp(targetPath, 0);
                             }
 
-                            // 生成JSON输出，使用logo URL代替preview_path
+                            // 生成JSON输出
                             string escapedAppName = escapeJsonString(utf8_converter.to_bytes(appName));
                             string escapedTargetPath = escapeJsonString(utf8_converter.to_bytes(targetPath));
                             string escapedIconPath = escapeJsonString(utf8_converter.to_bytes(iconPath));
                             wstring json = L"{\"title\":\"" + utf8_converter.from_bytes(escapedAppName) +
                                 L"\",\"content\":\"" + utf8_converter.from_bytes(escapedTargetPath) +
                                 L"\",\"cmd\":\"explorer.exe \\\"" + utf8_converter.from_bytes(escapedTargetPath) + L"\\\"\"" +
-                                L",\"image_url\":\"" + utf8_converter.from_bytes(escapedIconPath) + L"\"}";
+                                L",\"preview_path\":\"" + utf8_converter.from_bytes(escapedIconPath) + L"\"}";
 
-                            std::wcout << json << L"\n\nnext_result\n";
+                            cout << utf8_converter.to_bytes(json);
+                            cout << "\n\nnext_result\n";
                             firstResult = false;
                         }
                     }
@@ -347,16 +346,17 @@ void ScanRegistry(HKEY hKey, const wstring& keyword, set<wstring>& exportedApps,
                             // 提取图标
                             iconPath = SaveIconToTemp(exePath, 0);
 
-                            // 生成JSON输出，使用logo URL代替preview_path
+                            // 生成JSON输出
                             string escapedDisplayName = escapeJsonString(utf8_converter.to_bytes(displayName));
                             string escapedExePath = escapeJsonString(utf8_converter.to_bytes(exePath));
                             string escapedIconPath = escapeJsonString(utf8_converter.to_bytes(iconPath));
                             wstring json = L"{\"title\":\"" + utf8_converter.from_bytes(escapedDisplayName) +
                                 L"\",\"content\":\"" + utf8_converter.from_bytes(escapedExePath) +
                                 L"\",\"cmd\":\"explorer.exe \\\"" + utf8_converter.from_bytes(escapedExePath) + L"\\\"\"" +
-                                L",\"image_url\":\"" + utf8_converter.from_bytes(escapedIconPath) + L"\"}";
+                                L",\"preview_path\":\"" + utf8_converter.from_bytes(escapedIconPath) + L"\"}";
 
-                            std::wcout << json << L"\n\nnext_result\n";
+                            cout << utf8_converter.to_bytes(json);
+                            cout << "\n\nnext_result\n";
                             firstResult = false;
                         }
                     }
@@ -377,10 +377,8 @@ int wmain(int argc, wchar_t* argv[]) {
     ULONG_PTR gdiplusToken;
     GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, nullptr);
 
-// 设置控制台输出UTF-8
+    // 设置控制台输出UTF-8
     SetConsoleOutputCP(CP_UTF8);
-    _setmode(_fileno(stdout), _O_U8TEXT);
-    std::wcout.imbue(std::locale("en_US.UTF-8"));
 
     // 清理临时文件
     CleanTempIcons();

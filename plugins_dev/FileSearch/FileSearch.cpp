@@ -3,10 +3,8 @@
 #include <vector>
 #include <windows.h>
 #include <shlobj.h>
-#include <io.h>
-#include <fcntl.h>
-#include <codecvt>
 #include <locale>
+#include <codecvt>
 
 // 确保所有CSIDL常量都有定义
 #ifndef CSIDL_DESKTOP
@@ -25,16 +23,39 @@
 #define CSIDL_DOWNLOADS 0x0040
 #endif
 
-// 将字符串转换为小写
-std::string toLower(const std::string& str) {
-    std::string lowerStr;
-    for (char c : str) {
-        lowerStr += tolower(c);
+// 设置控制台代码页为UTF-8
+void setConsoleToUTF8() {
+    SetConsoleOutputCP(CP_UTF8);
+    SetConsoleCP(CP_UTF8);
+}
+
+// 将UTF-8字符串转换为wstring
+std::wstring utf8ToWstring(const std::string& str) {
+    int size_needed = MultiByteToWideChar(CP_UTF8, 0, &str[0], (int)str.size(), NULL, 0);
+    std::wstring wstrTo(size_needed, 0);
+    MultiByteToWideChar(CP_UTF8, 0, &str[0], (int)str.size(), &wstrTo[0], size_needed);
+    return wstrTo;
+}
+
+// 将wstring转换为UTF-8字符串
+std::string wstringToUtf8(const std::wstring& wstr) {
+    if (wstr.empty()) return std::string();
+    int size_needed = WideCharToMultiByte(CP_UTF8, 0, &wstr[0], (int)wstr.size(), NULL, 0, NULL, NULL);
+    std::string strTo(size_needed, 0);
+    WideCharToMultiByte(CP_UTF8, 0, &wstr[0], (int)wstr.size(), &strTo[0], size_needed, NULL, NULL);
+    return strTo;
+}
+
+// 将wstring转换为小写
+std::wstring toLowerW(const std::wstring& wstr) {
+    std::wstring lowerStr;
+    for (wchar_t c : wstr) {
+        lowerStr += std::towlower(c);
     }
     return lowerStr;
 }
 
-// 转义JSON字符串中的特殊字符
+// 转义JSON字符串中的特殊字符 (UTF-8 version)
 std::string escapeJsonString(const std::string& str) {
     std::string output;
     for (char c : str) {
@@ -53,16 +74,16 @@ std::string escapeJsonString(const std::string& str) {
 }
 
 // 检查文件扩展名是否符合要求
-bool isValidExtension(const std::string& filename) {
+bool isValidExtension(const std::wstring& filename) {
     // 获取文件扩展名（小写）
-    size_t dotPos = filename.find_last_of('.');
-    if (dotPos == std::string::npos) return false;
+    size_t dotPos = filename.find_last_of(L'.');
+    if (dotPos == std::wstring::npos) return false;
 
-    std::string ext = toLower(filename.substr(dotPos));
+    std::wstring ext = toLowerW(filename.substr(dotPos));
 
     // 允许的扩展名列表
-    const std::vector<std::string> allowedExtensions = {
-        ".txt", ".doc", ".docx", ".ppt", ".pptx", ".mp3", ".mp4", ".md", ".cpp", ".zip", ".7z", ".png", ".gif", ".jpg", ".jpeg"
+    const std::vector<std::wstring> allowedExtensions = {
+        L".txt", L".doc", L".docx", L".ppt", L".pptx", L".mp3", L".mp4", L".md", L".cpp", L".zip", L".7z", L".png", L".gif", L".jpg", L".jpeg"
     };
 
     // 检查是否在允许列表中
@@ -74,14 +95,12 @@ bool isValidExtension(const std::string& filename) {
 }
 
 // 递归搜索目录
-void searchDirectory(const std::string& path, const std::string& keyword) {
-    // 转换路径为宽字符
-    std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
-    std::wstring pathWide = converter.from_bytes(path);
-    std::wstring searchPath = pathWide + L"\\*";
-
+void searchDirectory(const std::wstring& path, const std::wstring& keyword) {
     WIN32_FIND_DATAW findData;
-    HANDLE hFind = FindFirstFileW(searchPath.c_str(), &findData);
+    HANDLE hFind;
+    std::wstring searchPath = path + L"\\*";
+
+    hFind = FindFirstFileW(searchPath.c_str(), &findData);
     if (hFind == INVALID_HANDLE_VALUE) {
         return;
     }
@@ -91,14 +110,14 @@ void searchDirectory(const std::string& path, const std::string& keyword) {
             continue; // 跳过 "." 和 ".."
         }
 
-        std::wstring fullPath = pathWide + L"\\" + findData.cFileName;
+        std::wstring fullPath = path + L"\\" + findData.cFileName;
 
         if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
             // 递归搜索子目录
-            searchDirectory(converter.to_bytes(fullPath), keyword);
+            searchDirectory(fullPath, keyword);
         }
         else {
-            std::string filename = converter.to_bytes(findData.cFileName);
+            std::wstring filename = findData.cFileName;
 
             // 检查文件扩展名
             if (!isValidExtension(filename)) {
@@ -106,19 +125,29 @@ void searchDirectory(const std::string& path, const std::string& keyword) {
             }
 
             // 检查文件名是否包含关键字
-            std::string lowerName = toLower(filename);
+            std::wstring lowerName = toLowerW(filename);
 
-            if (lowerName.find(keyword) != std::string::npos) {
-                // 构造打开文件资源管理器的命令
-                std::string openCmd = "explorer.exe \"" + converter.to_bytes(fullPath) + "\"";
+            if (lowerName.find(keyword) != std::wstring::npos) {
+                // Convert to UTF-8 for output
+                std::string utf8Filename = wstringToUtf8(filename);
+                std::string utf8FullPath = wstringToUtf8(fullPath);
+                std::string utf8Keyword = wstringToUtf8(keyword);
                 
-                // 输出JSON格式结果，使用logo URL代替preview_path
-                std::wcout << L"{"
-                    << L"\"title\":\"" << converter.from_bytes(escapeJsonString(filename)) << L"\","
-                    << L"\"content\":\"" << converter.from_bytes(escapeJsonString(converter.to_bytes(fullPath))) << L"\","
-                    << L"\"cmd\":\"" << converter.from_bytes(escapeJsonString(openCmd)) << L"\""
-                    << L"}\n"
-                    << L"\nnext_result\n";
+                // 构造打开文件资源管理器的命令
+                std::string openCmd = "explorer.exe \"" + utf8FullPath + "\"";
+                // 获取文件扩展名（小写）
+                size_t dotPos = filename.find_last_of(L'.');
+                std::wstring extW = dotPos != std::wstring::npos ? toLowerW(filename.substr(dotPos)) : L"";
+                std::string ext = wstringToUtf8(extW);
+
+                // 输出JSON格式结果
+                std::cout << "{"
+                    << "\"title\":\"" << escapeJsonString(utf8Filename) << "\","
+                    << "\"content\":\"" << escapeJsonString(utf8FullPath) << "\","
+                    << "\"cmd\":\"" << escapeJsonString(openCmd) << "\""
+                    << (ext == ".png" || ext == ".jpg" || ext == ".jpeg" ? ",\"preview_path\":\"" + escapeJsonString(utf8FullPath) + "\"" : "")
+                    << "}\n"
+                    << "\nnext_result\n";
             }
         }
     } while (FindNextFileW(hFind, &findData));
@@ -127,26 +156,40 @@ void searchDirectory(const std::string& path, const std::string& keyword) {
 }
 
 int main(int argc, char* argv[]) {
-    // 设置控制台输出为UTF-8
-    SetConsoleOutputCP(CP_UTF8);
-    _setmode(_fileno(stdout), _O_U8TEXT);
-    std::wcout.imbue(std::locale("en_US.UTF-8"));
-    std::wcin.imbue(std::locale("en_US.UTF-8"));
-
+    // 设置控制台为UTF-8模式
+    setConsoleToUTF8();
+    
     // 检查命令行参数
     if (argc != 3 || std::string(argv[1]) != "-k") {
         std::cerr << "Usage: " << argv[0] << " -k <keyword>\n";
         return 1;
     }
 
-    // 转换关键字为UTF-8
-    std::string keywordArg = argv[2];
-    std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
-    std::wstring keywordWide = converter.from_bytes(keywordArg);
-    std::string keyword = toLower(converter.to_bytes(keywordWide));  // 获取并转换为小写关键字
+    // Convert keyword from command line to wide string for Unicode support
+    std::wstring keywordW;
+    int size_needed = MultiByteToWideChar(CP_UTF8, 0, argv[2], -1, NULL, 0);
+    if (size_needed > 1) {
+        keywordW.resize(size_needed - 1); // Remove null terminator from count
+        MultiByteToWideChar(CP_UTF8, 0, argv[2], -1, &keywordW[0], size_needed);
+    } else {
+        // If conversion fails, try default ANSI code page
+        int size_needed_ansi = MultiByteToWideChar(CP_ACP, 0, argv[2], -1, NULL, 0);
+        if (size_needed_ansi > 1) {
+            keywordW.resize(size_needed_ansi - 1);
+            MultiByteToWideChar(CP_ACP, 0, argv[2], -1, &keywordW[0], size_needed_ansi);
+        } else {
+            // Fallback to original string as wide string
+            for (char c : std::string(argv[2])) {
+                keywordW += static_cast<wchar_t>(static_cast<unsigned char>(c));
+            }
+        }
+    }
+
+    // 转换为小写
+    keywordW = toLowerW(keywordW);
 
     // 如果关键字为空，则直接退出
-    if (keyword.empty()) {
+    if (keywordW.empty()) {
         return 0;
     }
 
@@ -161,17 +204,18 @@ int main(int argc, char* argv[]) {
 
     // 搜索所有指定目录
     for (int folderType : folderTypes) {
-        CHAR folderPath[MAX_PATH];
-        if (SUCCEEDED(SHGetFolderPathA(NULL, folderType, NULL, 0, folderPath))) {
-            searchDirectory(folderPath, keyword);
+        WCHAR folderPath[MAX_PATH];
+        if (SUCCEEDED(SHGetFolderPathW(NULL, folderType, NULL, 0, folderPath))) {
+            std::wstring wstrFolderPath(folderPath);
+            searchDirectory(wstrFolderPath, keywordW);
         }
         else {
             // 特殊处理下载文件夹（某些旧系统可能不支持CSIDL_DOWNLOADS）
             if (folderType == CSIDL_DOWNLOADS) {
                 // 尝试替代方法获取下载文件夹
-                if (SUCCEEDED(SHGetFolderPathA(NULL, CSIDL_PROFILE, NULL, 0, folderPath))) {
-                    std::string downloadsPath = std::string(folderPath) + "\\Downloads";
-                    searchDirectory(downloadsPath, keyword);
+                if (SUCCEEDED(SHGetFolderPathW(NULL, CSIDL_PROFILE, NULL, 0, folderPath))) {
+                    std::wstring downloadsPath = std::wstring(folderPath) + L"\\Downloads";
+                    searchDirectory(downloadsPath, keywordW);
                 }
             }
         }
