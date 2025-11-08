@@ -67,7 +67,7 @@ Future<void> savePlugins() async {
   sharedPreferences = await SharedPreferences.getInstance();
   List<String> plugins_str_list = [];
   for(Plugin item in plugins){
-    plugins_str_list.add(item.toJson().toString());
+    plugins_str_list.add(jsonEncode(item.toJson()));
   }
   await sharedPreferences?.setStringList("plugins", plugins_str_list);
 }
@@ -170,7 +170,8 @@ Future<List<Plugin>> getPlugins() async {
   if (plugins_str_list != null) {
     for (String item in plugins_str_list) {
       var json_str = jsonDecode(item);
-      _plugins.add(Plugin(name: json_str["main"], path: json_str["path"], version: json_str["version"],icon_path: json_str["icon_path"]));
+      Plugin plugin = Plugin.fromJson(json_str);
+      _plugins.add(plugin);
     }
   }
   plugins = _plugins;
@@ -213,6 +214,7 @@ Future<List<ResultItemCard>> getResultItems(
   void Function(List<ResultItemCard>?)? onDataChange,
 }) async {
   killAllRunningProcesses();
+  getPlugins();
 
   is_getting_result = true;
 
