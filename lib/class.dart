@@ -1,4 +1,4 @@
-class plugin{
+class Plugin{
   String name;
   String path;
   String version;
@@ -14,5 +14,5 @@ class plugin{
     };
   }
 
-  plugin({required this.name,required this.path,required this.version, this.icon_path});
+  Plugin({required this.name,required this.path,required this.version, this.icon_path});
 }

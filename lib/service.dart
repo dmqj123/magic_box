@@ -36,9 +36,9 @@ bool is_getting_result = false;
 List<Process> get_result_processes = [];
 List<ResultItemCard> result_items = [];
 
-List<plugin> plugins = [
+List<Plugin> plugins = [
   //TEST
-  plugin(
+  Plugin(
     name: "FileSearch",
     path:
         "J:\\zzx\\Code\\Flutter\\magic_box\\plugins_dev\\FileSearch\\x64\\Debug\\FileSearch.exe",
@@ -46,7 +46,7 @@ List<plugin> plugins = [
     //icon_path: "C:\\Users\\abcdef\\Downloads\\aQjQWax4Tl.jpg",
   ),
 
-  plugin(
+  Plugin(
     name: "AppSearch",
     path:
         "J:\\zzx\\Code\\Flutter\\magic_box\\plugins_dev\\AppSearch\\Debug\\AppSearch.exe",
@@ -66,10 +66,19 @@ List<plugin> plugins = [
 Future<void> savePlugins() async {
   sharedPreferences = await SharedPreferences.getInstance();
   List<String> plugins_str_list = [];
-  for(plugin item in plugins){
+  for(Plugin item in plugins){
     plugins_str_list.add(item.toJson().toString());
   }
   await sharedPreferences?.setStringList("plugins", plugins_str_list);
+}
+
+void delPlugin(String name) async {
+  final Plugin item = plugins.firstWhere((element) => element.name == name);
+  String folder_path = item.path+"\\..";
+  //删除插件文件夹
+  Directory(folder_path).deleteSync(recursive: true);
+  plugins.removeWhere((element) => element.name == name);
+  await savePlugins();
 }
 
 Future<void> addPlugin(String package_path) async {
@@ -140,7 +149,7 @@ Future<void> addPlugin(String package_path) async {
         plugins.removeWhere((element) => element.name == name);
       }
       plugins.add(
-        plugin(
+        Plugin(
           name: name,
           path: '$new_path/$main_file',
           version: version,
@@ -154,14 +163,14 @@ Future<void> addPlugin(String package_path) async {
   }
 }
 
-Future<List<plugin>> getPlugins() async {
-  List<plugin> _plugins = [];
+Future<List<Plugin>> getPlugins() async {
+  List<Plugin> _plugins = [];
   sharedPreferences = await SharedPreferences.getInstance();
   List<String>? plugins_str_list = sharedPreferences?.getStringList("plugins");
   if (plugins_str_list != null) {
     for (String item in plugins_str_list) {
       var json_str = jsonDecode(item);
-      _plugins.add(plugin(name: json_str["main"], path: json_str["path"], version: json_str["version"],icon_path: json_str["icon_path"]));
+      _plugins.add(Plugin(name: json_str["main"], path: json_str["path"], version: json_str["version"],icon_path: json_str["icon_path"]));
     }
   }
   plugins = _plugins;
@@ -210,7 +219,7 @@ Future<List<ResultItemCard>> getResultItems(
   List<ResultItemCard> result_list = [];
   List<Future<List<ResultItemCard>?>> get_results_futures = [];
 
-  for (plugin item in plugins) {
+  for (Plugin item in plugins) {
     get_results_futures.add(
       Future<List<ResultItemCard>?>(() async {
         get_result_processes.add(
