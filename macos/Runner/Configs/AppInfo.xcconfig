@@ -8,7 +8,7 @@
 PRODUCT_NAME = magic_box
 
 // The application's bundle identifier
-PRODUCT_BUNDLE_IDENTIFIER = com.example.magicBox
+PRODUCT_BUNDLE_IDENTIFIER = com.dmqj.magicBox
 
 // The copyright displayed in application information
-PRODUCT_COPYRIGHT = Copyright © 2025 com.example. All rights reserved.
+PRODUCT_COPYRIGHT = Copyright © 2025 com.dmqj. All rights reserved.

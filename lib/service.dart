@@ -1,8 +1,13 @@
 import 'dart:convert';
 import 'dart:io';
-
+import 'package:archive/archive.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as path;
 import 'components.dart';
 import 'class.dart';
+
+SharedPreferences? sharedPreferences;
 
 // 根据编码名称获取编码对象
 Encoding getEncodingByName(String? encodingName) {
@@ -40,6 +45,7 @@ List<plugin> plugins = [
     version: "1.0.0",
     //icon_path: "C:\\Users\\abcdef\\Downloads\\aQjQWax4Tl.jpg",
   ),
+
   plugin(
     name: "AppSearch",
     path:
@@ -47,19 +53,117 @@ List<plugin> plugins = [
     version: "1.0.0",
     //icon_path: "C:\\Users\\abcdef\\Downloads\\aQjQWax4Tl.jpg",
   ),
-  
-  plugin(
+
+  /*plugin(
     name: "WebSearch",
     path:
         "J:\\zzx\\Code\\Flutter\\magic_box\\plugins_dev\\WebSearch\\Debug\\WebSearch.exe",
     version: "1.0.0",
-    //icon_path: "C:\\Users\\abcdef\\Downloads\\aQjQWax4Tl.jpg",
-  ),
+    icon_path: "C:\\Users\\abcdef\\Downloads\\websearch\\icon.png",
+  ),*/
 ];
 
-List<plugin> getPlugins() {
+Future<void> addPlugin(String package_path) async {
+  //添加插件
+  //解压插件包至临时目录
+  Directory tempDir = await getTemporaryDirectory();
+
+  List<int> zipData = await File(package_path).readAsBytes();
+
+  Archive archive = ZipDecoder().decodeBytes(zipData);
+
+  //获取时间戳
+  String timestamp = DateTime.now().millisecondsSinceEpoch.toString();
+
+  for (ArchiveFile file in archive) {
+    String filename = file.name;
+    String extractedPath = '${tempDir.path}/magic_box/pic/$timestamp/$filename';
+
+    if (file.isFile) {
+      // For files, create the file with content
+      File extractedFile = File(extractedPath);
+      await extractedFile.create(recursive: true);
+      await extractedFile.writeAsBytes(file.content as List<int>);
+    } else {
+      // For directories, just create the directory
+      Directory extractedDir = Directory(extractedPath);
+      await extractedDir.create(recursive: true);
+    }
+  }
+
+  //读取解压完后目录中的config.json
+  String config_path = '${tempDir.path}/magic_box/pic/$timestamp/config.json';
+  //判断是否存在
+  if (File(config_path).existsSync()) {
+    //读取config.json
+    String config_json = await File(config_path).readAsString();
+    //解析config.json
+    Map<String, dynamic> config = jsonDecode(config_json);
+    if (config['sign'] == "mbep") {
+      //获取插件名称
+      String name = config['name'];
+      //获取插件版本
+      String version = config['version'];
+      //获取插件图标路径
+      String icon_path = config['icon'];
+
+      String main_file = config['main_file'];
+      //移动到新的目录中
+      final Directory _ApplicationSupportDirectory =
+          await getApplicationSupportDirectory();
+      String new_path = '${_ApplicationSupportDirectory.path}\\plugins\\$name';
+      print("package_path:"+'${tempDir.path}/magic_box/pic/$timestamp/');
+      print("new_path: $new_path");
+      
+      if (!Directory(new_path).existsSync()) {
+        await Directory(new_path).create(recursive: true);
+      }
+      else{
+        Directory(new_path).deleteSync(recursive: true);
+      }
+      await copyDirectory(
+        Directory('${tempDir.path}/magic_box/pic/$timestamp/'),
+        Directory(new_path),
+      );
+      //TODO 添加至插件列表中
+      plugins.add(
+        plugin(
+          name: name,
+          path: '$new_path/$main_file',
+          version: version,
+          icon_path: '$new_path/$icon_path',
+        ),
+      );
+    }
+  } else {
+    //错误处理
+  }
+}
+
+Future<List<plugin>> getPlugins() async {
+  print(getApplicationSupportDirectory());
+  sharedPreferences = await SharedPreferences.getInstance();
   //TODO 从配置文件读取插件
   return plugins;
+}
+
+Future<void> copyDirectory(Directory source, Directory destination) async {
+  if (!await destination.exists()) {
+    await destination.create(recursive: true);
+  }
+
+  await for (FileSystemEntity entity in source.list(recursive: true)) {
+    String relativePath = path.relative(entity.path, from: source.path);
+    String targetPath = path.join(destination.path, relativePath);
+
+    if (entity is File) {
+      File targetFile = File(targetPath);
+      await targetFile.create(recursive: true);
+      await targetFile.writeAsBytes(await entity.readAsBytes());
+    } else if (entity is Directory) {
+      await Directory(targetPath).create(recursive: true);
+    }
+  }
 }
 
 void killAllRunningProcesses() {
@@ -112,7 +216,7 @@ Future<List<ResultItemCard>> getResultItems(
         await for (List<int> chunk in process.stdout) {
           rawOutputBytes.addAll(chunk);
         }
-        
+
         String rawOutput;
         try {
           // Try to decode as UTF-8 first

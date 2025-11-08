@@ -1,10 +1,9 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-
-import 'package:magic_box/components.dart';
-import 'package:magic_box/pages.dart';
 import 'package:magic_box/service.dart';
 import 'package:magic_box/const.dart';
+import 'package:path_provider/path_provider.dart';
 
 import 'package:window_manager/window_manager.dart';
 
@@ -14,6 +13,23 @@ void main() async {
   // Must add this line.
   // 确保窗口管理器初始化完成
   await windowManager.ensureInitialized();
+
+  // 删除临时目录中的文件
+  try {
+    Directory tempDir = await getTemporaryDirectory();
+    String picDirPath = '${tempDir.path}/magic_box/pic/';
+    Directory picDir = Directory(picDirPath);
+    
+    if (await picDir.exists()) {
+      // 删除目录中的所有文件和子目录
+      await for (FileSystemEntity entity in picDir.list()) {
+        await entity.delete(recursive: true);
+      }
+      print('已清理临时目录: $picDirPath');
+    }
+  } catch (e) {
+    print('清理临时目录时出错: $e');
+  }
 
   // 定义窗口选项配置
   WindowOptions windowOptions = const WindowOptions(
