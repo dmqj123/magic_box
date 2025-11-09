@@ -283,7 +283,7 @@ void LaunchOrActivateMainProgram() {
 
     // 如果启动成功，等待一会然后尝试激活窗口
     if (reinterpret_cast<INT_PTR>(result) > 32) {
-        Sleep(1000); // 等待1秒让程序启动
+        Sleep(3000); // 等待让程序启动
 
         // 重新查找进程和窗口
         DWORD newPid = GetProcessIdByName("magic_box.exe");
