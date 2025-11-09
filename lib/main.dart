@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:magic_box/service.dart';
 import 'package:magic_box/const.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:magic_box/pages/settings_page.dart';
 
 import 'package:window_manager/window_manager.dart';
 
@@ -19,7 +20,7 @@ void main() async {
     Directory tempDir = await getTemporaryDirectory();
     String picDirPath = '${tempDir.path}/magic_box/pic/';
     Directory picDir = Directory(picDirPath);
-    
+
     if (await picDir.exists()) {
       // 删除目录中的所有文件和子目录
       await for (FileSystemEntity entity in picDir.list()) {
@@ -67,7 +68,11 @@ class _MyAppState extends State<MyApp> with WindowListener {
   String input_text = "";
 
   void getResults() async {
-    if (input_text != null && input_text.length > 0 && input_text != "" && input_text != " " && input_text.isNotEmpty) {
+    if (input_text != null &&
+        input_text.length > 0 &&
+        input_text != "" &&
+        input_text != " " &&
+        input_text.isNotEmpty) {
       result_items = await getResultItems(
         input_text,
         onDataChange: (data) {
@@ -78,8 +83,7 @@ class _MyAppState extends State<MyApp> with WindowListener {
           });
         },
       );
-    }
-    else{
+    } else {
       result_items = [];
     }
     setState(() {});
@@ -207,14 +211,14 @@ class _MyAppState extends State<MyApp> with WindowListener {
                                           IconButton(
                                             onPressed: () {
                                               //打开设置
-                                              /*
                                               Navigator.push(
                                                 context,
                                                 MaterialPageRoute(
-                                                  builder: (context) =>
-                                                      const SettingsPage(),
+                                                  builder:
+                                                      (context) =>
+                                                          const SettingsPage(),
                                                 ),
-                                              );*/
+                                              );
                                             },
                                             icon: const Icon(Icons.settings),
                                             style: IconButton.styleFrom(
