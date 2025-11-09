@@ -164,6 +164,41 @@ DWORD GetProcessIdByName(const char* processName) {
     return pid;
 }
 
+// 改进的窗口激活函数
+void ActivateWindow(HWND hwnd) {
+    if (!hwnd || !IsWindow(hwnd)) {
+        return;
+    }
+
+    // 如果窗口最小化，先恢复
+    if (IsIconic(hwnd)) {
+        ShowWindow(hwnd, SW_RESTORE);
+    }
+
+    // 方法1: 标准的激活方式
+    SetForegroundWindow(hwnd);
+
+    // 方法2: 附加线程输入（提高SetForegroundWindow成功率）
+    DWORD foregroundThreadId = GetWindowThreadProcessId(GetForegroundWindow(), NULL);
+    DWORD targetThreadId = GetWindowThreadProcessId(hwnd, NULL);
+
+    if (foregroundThreadId != targetThreadId) {
+        AttachThreadInput(targetThreadId, foregroundThreadId, TRUE);
+        SetForegroundWindow(hwnd);
+        AttachThreadInput(targetThreadId, foregroundThreadId, FALSE);
+    }
+    else {
+        SetForegroundWindow(hwnd);
+    }
+
+    // 方法3: 强制刷新窗口状态
+    BringWindowToTop(hwnd);
+    SetWindowPos(hwnd, HWND_TOP, 0, 0, 0, 0,
+        SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
+
+    SetFocus(hwnd);
+}
+
 // 将窗口移动到鼠标所在位置并激活
 void MoveWindowToMousePosition(HWND hwnd) {
     if (!hwnd || !IsWindow(hwnd)) {
@@ -192,7 +227,7 @@ void MoveWindowToMousePosition(HWND hwnd) {
         int newX = mousePos.x - width / 2;
         int newY = mousePos.y - height / 2;
 
-        // 确保窗口不会超出屏幕工作区域（使用条件判断代替min/max）
+        // 确保窗口不会超出屏幕工作区域
         if (newX < workArea.left) newX = workArea.left;
         if (newX > workArea.right - width) newX = workArea.right - width;
         if (newY < workArea.top) newY = workArea.top;
@@ -200,7 +235,7 @@ void MoveWindowToMousePosition(HWND hwnd) {
 
         // 移动窗口
         SetWindowPos(hwnd, HWND_TOP, newX, newY, width, height,
-            SWP_NOOWNERZORDER | SWP_NOZORDER | SWP_NOACTIVATE);
+            SWP_NOOWNERZORDER | SWP_NOZORDER | SWP_SHOWWINDOW);
     }
     else {
         // 如果获取屏幕信息失败，直接使用鼠标位置
@@ -208,17 +243,10 @@ void MoveWindowToMousePosition(HWND hwnd) {
             mousePos.x - width / 2,
             mousePos.y - height / 2,
             width, height,
-            SWP_NOOWNERZORDER | SWP_NOZORDER | SWP_NOACTIVATE);
+            SWP_NOOWNERZORDER | SWP_NOZORDER | SWP_SHOWWINDOW);
     }
 
-    // 激活窗口并设置为前台窗口
-    if (IsIconic(hwnd)) {
-        ShowWindow(hwnd, SW_RESTORE);
-    }
-
-    SetForegroundWindow(hwnd);
-    SetFocus(hwnd);
-    BringWindowToTop(hwnd);
+    ActivateWindow(hwnd);
 }
 
 // 启动主程序或激活现有实例
@@ -238,11 +266,11 @@ void LaunchOrActivateMainProgram() {
         }
     }
 
-    // 进程不存在，启动新实例
+    // 启动新实例
     std::string dir = GetExeDirectory();
     std::string mainExe = dir + "\\magic_box.exe";
 
-    // 使用 ShellExecute 启动主程序
+    // 使用 ShellExecute 启动主程序，并等待一会然后激活
     HINSTANCE result = ShellExecuteA(NULL, "open", mainExe.c_str(), NULL, dir.c_str(), SW_SHOWNORMAL);
     if (reinterpret_cast<INT_PTR>(result) <= 32) {
         // 启动失败，可能是因为文件不存在
@@ -250,7 +278,21 @@ void LaunchOrActivateMainProgram() {
         char currentDir[MAX_PATH] = { 0 };
         GetCurrentDirectoryA(MAX_PATH, currentDir);
         std::string altExe = std::string(currentDir) + "\\magic_box.exe";
-        ShellExecuteA(NULL, "open", altExe.c_str(), NULL, currentDir, SW_SHOWNORMAL);
+        result = ShellExecuteA(NULL, "open", altExe.c_str(), NULL, currentDir, SW_SHOWNORMAL);
+    }
+
+    // 如果启动成功，等待一会然后尝试激活窗口
+    if (reinterpret_cast<INT_PTR>(result) > 32) {
+        Sleep(1000); // 等待1秒让程序启动
+
+        // 重新查找进程和窗口
+        DWORD newPid = GetProcessIdByName("magic_box.exe");
+        if (newPid != 0) {
+            HWND newHwnd = FindMainWindow(newPid);
+            if (newHwnd) {
+                ActivateWindow(newHwnd);
+            }
+        }
     }
 }
 
