@@ -208,30 +208,35 @@ class _MyAppState extends State<MyApp> with WindowListener {
                                       : Row(
                                         key: const ValueKey<bool>(false),
                                         children: [
-                                          IconButton(
-                                            onPressed: () {
-                                              //打开设置
-                                              Navigator.push(
-                                                context,
-                                                MaterialPageRoute(
-                                                  builder:
-                                                      (context) =>
-                                                          const SettingsPage(),
-                                                ),
-                                              );
-                                            },
-                                            icon: const Icon(Icons.settings),
-                                            style: IconButton.styleFrom(
-                                              backgroundColor:
-                                                  const Color.fromARGB(
-                                                    255,
-                                                    47,
-                                                    96,
-                                                    129,
+                                          Builder(
+                                            builder:
+                                                (context) => IconButton(
+                                                  onPressed: () {
+                                                    // 打开设置
+                                                    Navigator.push(
+                                                      context,
+                                                      MaterialPageRoute(
+                                                        builder:
+                                                            (context) =>
+                                                                const SettingsPage(),
+                                                      ),
+                                                    );
+                                                  },
+                                                  icon: const Icon(
+                                                    Icons.settings,
                                                   ),
-                                              splashFactory:
-                                                  NoSplash.splashFactory,
-                                            ),
+                                                  style: IconButton.styleFrom(
+                                                    backgroundColor:
+                                                        const Color.fromARGB(
+                                                          255,
+                                                          47,
+                                                          96,
+                                                          129,
+                                                        ),
+                                                    splashFactory:
+                                                        NoSplash.splashFactory,
+                                                  ),
+                                                ),
                                           ),
                                           const SizedBox(width: 3),
                                           IconButton(
@@ -418,11 +423,11 @@ class _TransparentSearchBoxState extends State<TransparentSearchBox> {
               onSubmitted: widget.onSearchSubmitted,
               //当文字改变
               onChanged: (value) {
-                myAppState!.setState(() {
-                  myAppState!.is_result_show = true;
-                  myAppState!.input_text = value;
+                myAppState.setState(() {
+                  myAppState.is_result_show = true;
+                  myAppState.input_text = value;
                   if (value != "") {
-                    myAppState!.getResults();
+                    myAppState.getResults();
                   }
                 });
               },
