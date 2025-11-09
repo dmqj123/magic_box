@@ -1,0 +1,37 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "J:\\zzx\\Code\\Flutter\\magic_box\\service\\MagicBoxSearchService\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{2DD97113-C6B8-4D96-AF75-24F5CDC6EF08}|MagicBoxSearchService.vcxproj|J:\\zzx\\Code\\Flutter\\magic_box\\service\\MagicBoxSearchService\\MagicBoxSearchService.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{2DD97113-C6B8-4D96-AF75-24F5CDC6EF08}|MagicBoxSearchService.vcxproj|solutionrelative:MagicBoxSearchService.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 0,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "MagicBoxSearchService.cpp",
+              "DocumentMoniker": "J:\\zzx\\Code\\Flutter\\magic_box\\service\\MagicBoxSearchService\\MagicBoxSearchService.cpp",
+              "RelativeDocumentMoniker": "MagicBoxSearchService.cpp",
+              "ToolTip": "J:\\zzx\\Code\\Flutter\\magic_box\\service\\MagicBoxSearchService\\MagicBoxSearchService.cpp",
+              "RelativeToolTip": "MagicBoxSearchService.cpp",
+              "ViewState": "AgIAABkAAAAAAAAAAAAAACAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2025-11-08T23:11:12.307Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
