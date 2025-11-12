@@ -65,7 +65,8 @@ plugin_name.zip
   "content": "结果内容/描述",
   "cmd": "单击时执行的命令",
   "preview_path": "预览图像路径 (可选)",
-  "encoding": "文本编码 (可选)"
+  "encoding": "文本编码 (可选)",
+  "auto_close": false //可选 打开结果后是否自动关闭窗口
 }
 ```
 

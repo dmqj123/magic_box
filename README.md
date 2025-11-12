@@ -29,6 +29,7 @@ Magic Box is designed as a plugin-based search tool:
 4. Click on results to execute their associated actions
 5. Access settings via the gear icon to manage plugins and preferences
 6. Close Magic Box with the close (X) button or press Escape
+7. Use Ctrl+~ to open Magic Box anywhere for quick search
 
 ## Plugin Development
 
@@ -66,7 +67,8 @@ plugin_name.zip
   "content": "Result Content/Description",
   "cmd": "Command to execute when clicked",
   "preview_path": "Path to preview image (optional)",
-  "encoding": "Text encoding (optional)"
+  "encoding": "Text encoding (optional)",
+  "auto_close": false // Optional: Whether to automatically close the window after opening the result
 }
 ```
 
