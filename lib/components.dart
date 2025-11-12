@@ -142,7 +142,7 @@ class _ResultItemCardState extends State<ResultItemCard> {
                             height: WINDOW_WIDTH / 12,
                             fit: BoxFit.cover,
                             errorBuilder: (context, error, stackTrace) {
-                              return Icon(Icons.error, color: Colors.red);
+                              return Container();
                             },
                           )
                         : Image.file(
@@ -151,7 +151,7 @@ class _ResultItemCardState extends State<ResultItemCard> {
                             height: WINDOW_WIDTH / 12,
                             fit: BoxFit.cover,
                             errorBuilder: (context, error, stackTrace) {
-                              return Icon(Icons.error, color: Colors.red);
+                              return Container();
                             },
                           ),
                   ),

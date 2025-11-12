@@ -38,12 +38,13 @@ List<ResultItemCard> result_items = [];
 
 List<Plugin> plugins = [
   //TEST
-  /*Plugin(
+  /*
+  Plugin(
     name: "FileSearch",
     path:
         "J:\\zzx\\Code\\Flutter\\magic_box\\plugins_dev\\FileSearch\\x64\\Debug\\FileSearch.exe",
     version: "1.0.0",
-    //icon_path: "C:\\Users\\abcdef\\Downloads\\aQjQWax4Tl.jpg",
+    icon_path: "C:\\Users\\abcdef\\Downloads\\aQjQWax4Tl.jpg",
   ),
 
   Plugin(
@@ -54,13 +55,13 @@ List<Plugin> plugins = [
     //icon_path: "C:\\Users\\abcdef\\Downloads\\aQjQWax4Tl.jpg",
   ),
 
-  plugin(
+  /*plugin(
     name: "WebSearch",
     path:
         "J:\\zzx\\Code\\Flutter\\magic_box\\plugins_dev\\WebSearch\\Debug\\WebSearch.exe",
     version: "1.0.0",
     icon_path: "C:\\Users\\abcdef\\Downloads\\websearch\\icon.png",
-  ),*/
+  ),*/*/
 ];
 
 Future<void> savePlugins() async {
@@ -123,15 +124,13 @@ Future<void> addPlugin(String package_path) async {
       //获取插件版本
       String version = config['version'];
       //获取插件图标路径
-      String icon_path = config['icon'];
+      String? icon_path = config['icon'];
 
       String main_file = config['main_file'];
       //移动到新的目录中
       final Directory _ApplicationSupportDirectory =
           await getApplicationSupportDirectory();
       String new_path = '${_ApplicationSupportDirectory.path}\\plugins\\$name';
-      print("package_path:"+'${tempDir.path}/magic_box/pic/$timestamp/');
-      print("new_path: $new_path");
       
       if (!Directory(new_path).existsSync()) {
         await Directory(new_path).create(recursive: true);
@@ -153,7 +152,7 @@ Future<void> addPlugin(String package_path) async {
           name: name,
           path: '$new_path/$main_file',
           version: version,
-          icon_path: '$new_path/$icon_path',
+          icon_path: (icon_path != null) ? '$new_path/$icon_path' : null,
         ),
       );
       await savePlugins();
@@ -201,7 +200,6 @@ void killAllRunningProcesses() {
   for (var process in get_result_processes) {
     try {
       process.kill();
-      print('进程 ${process.pid} 已被终止');
     } catch (e) {
       print('终止进程 ${process.pid} 失败: $e');
     }
@@ -234,7 +232,6 @@ Future<List<ResultItemCard>> getResultItems(
         List<ResultItemCard>? results = [];
         /*
       process.stdout.transform(systemEncoding.decoder).listen((data) {
-        print("object");
         // 每当有新的数据块可用时，此回调函数就会被调用
         // 假设每次接收到的 `data` 都是一个可以被 `AddResultItemCardFromJson` 处理的完整或部分JSON字符串
         // 如果 `data` 不是完整的JSON，这里可能会抛出解析异常，您可能需要累积数据后再解析

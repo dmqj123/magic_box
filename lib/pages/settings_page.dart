@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:magic_box/class.dart' show Plugin;
+import 'package:magic_box/service.dart';
 import 'package:magic_box/settings.dart';
 import 'package:magic_box/pages/plugin_manager_page.dart';
 
@@ -12,6 +14,7 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   @override
   Widget build(BuildContext context) {
+    killAllRunningProcesses();
     return Scaffold(
       appBar: AppBar(
         title: const Text('设置'),
@@ -38,11 +41,11 @@ class _SettingsPageState extends State<SettingsPage> {
             title: const Text('插件管理'),
             subtitle: const Text('管理已安装的插件'),
             trailing: const Icon(Icons.arrow_forward_ios),
-            onTap: () {
+            onTap: () async {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => const PluginManagerPage(),
+                  builder: (context) => PluginManagerPage(),
                 ),
               );
             },

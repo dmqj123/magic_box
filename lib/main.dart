@@ -26,7 +26,6 @@ void main() async {
       await for (FileSystemEntity entity in picDir.list()) {
         await entity.delete(recursive: true);
       }
-      print('已清理临时目录: $picDirPath');
     }
   } catch (e) {
     print('清理临时目录时出错: $e');
@@ -212,6 +211,10 @@ class _MyAppState extends State<MyApp> with WindowListener {
                                             builder:
                                                 (context) => IconButton(
                                                   onPressed: () {
+                                                    windowManager.setAlwaysOnTop(false);
+                                                    windowManager.setSize(Size(800, 450));
+                                                    windowManager.setResizable(true);
+                                                    windowManager.setTitleBarStyle(TitleBarStyle.normal);
                                                     // 打开设置
                                                     Navigator.push(
                                                       context,
@@ -219,8 +222,14 @@ class _MyAppState extends State<MyApp> with WindowListener {
                                                         builder:
                                                             (context) =>
                                                                 const SettingsPage(),
+                                                                
                                                       ),
-                                                    );
+                                                    ).then((result){
+                                                      windowManager.setSize(Size(WINDOW_WIDTH, 80));
+                                                      windowManager.setResizable(false);
+                                                      windowManager.setAlwaysOnTop(true);
+                                                      windowManager.setAsFrameless();
+                                                    });
                                                   },
                                                   icon: const Icon(
                                                     Icons.settings,
