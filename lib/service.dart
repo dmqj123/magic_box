@@ -254,9 +254,6 @@ Future<List<ResultItemCard>> getResultItems(
           // If UTF-8 fails, try other encodings or handle error gracefully
           print('UTF-8 decoding failed: $e');
           try {
-            // If you're on a Chinese system, you might want to try GBK encoding
-            // Since Dart doesn't have GBK built-in, we would use the convert package
-            // For now, we'll try Latin1 as a fallback which preserves the bytes
             rawOutput = latin1.decode(rawOutputBytes);
           } catch (e2) {
             print('Fallback encoding also failed: $e2');
@@ -346,10 +343,11 @@ List<ResultItemCard>? AddResultItemCardFromJson(
           decodedJson.map<ResultItemCard>((item) {
             return ResultItemCard(
               title: item['title']?.toString() ?? '未命名',
-              content: item['content']?.toString() ?? '路径未知',
+              content: item['content']?.toString() ?? '未知',
               cmd: item['cmd']?.toString(),
               image_path: plugin_image_path,
               preview_path: item['preview_path']?.toString(),
+              autoClose: item['auto_close'] ?? false,
               encoding:
                   item['encoding']?.toString() ??
                   encoding, // 如果没有encoding键，则使用传入的编码
@@ -364,6 +362,7 @@ List<ResultItemCard>? AddResultItemCardFromJson(
             cmd: decodedJson['cmd']?.toString(),
             image_path: plugin_image_path,
             preview_path: decodedJson['preview_path']?.toString(),
+            autoClose: decodedJson['auto_close'] ?? false,
             encoding:
                 decodedJson['encoding']?.toString() ??
                 encoding, // 如果没有encoding键，则使用传入的编码

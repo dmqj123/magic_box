@@ -11,6 +11,7 @@ class ResultItemCard extends StatefulWidget {
   final String? preview_path;
   final String? cmd;
   final String? encoding;
+  final bool? autoClose;
 
   const ResultItemCard({
     Key? key,
@@ -21,6 +22,7 @@ class ResultItemCard extends StatefulWidget {
     this.onTap,
     this.cmd,
     this.encoding,
+    this.autoClose,
   }) : super(key: key);
 
   @override
@@ -64,7 +66,7 @@ class _ResultItemCardState extends State<ResultItemCard> {
       child: Focus(
         focusNode: _focusNode,
         onFocusChange: (hasFocus) {
-          // _onFocusChange 已经处理了状态更新，这里可以留空或添加其他逻辑
+          
         },
         child: InkWell(
           onTap: () {
@@ -73,6 +75,12 @@ class _ResultItemCardState extends State<ResultItemCard> {
             }
             //Process.run('cmd', ['/C', widget.cmd!]);
             Process.run('powershell', [widget.cmd!]);
+            
+            Future.delayed(Duration(milliseconds: 500), () {
+              if(widget.autoClose == true){
+                exit(0);
+              }
+            });
           },
           borderRadius: BorderRadius.circular(15.0),
           child: Padding(
@@ -97,7 +105,7 @@ class _ResultItemCardState extends State<ResultItemCard> {
                             child: Icon(
                               Icons.broken_image,
                               color: Colors.grey[400],
-                              size: 25, // 指定图标大小与图片大小一致
+                              size: 25,
                             ),
                           );
                         },
