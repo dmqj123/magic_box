@@ -2,7 +2,7 @@
 <Project>
   <ProjectOutputs>
     <ProjectOutput>
-      <FullPath>J:\zzx\Code\Flutter\magic_box\plugins_dev\AppSearch\Debug\AppSearch.exe</FullPath>
+      <FullPath>J:\zzx\Code\Flutter\magic_box\plugins_dev\AppSearch\Release\AppSearch.exe</FullPath>
     </ProjectOutput>
   </ProjectOutputs>
   <ContentFiles />

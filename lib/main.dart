@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:magic_box/service.dart';
 import 'package:magic_box/const.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:magic_box/pages/settings_page.dart';
 
 import 'package:window_manager/window_manager.dart';
 
@@ -19,13 +20,12 @@ void main() async {
     Directory tempDir = await getTemporaryDirectory();
     String picDirPath = '${tempDir.path}/magic_box/pic/';
     Directory picDir = Directory(picDirPath);
-    
+
     if (await picDir.exists()) {
       // 删除目录中的所有文件和子目录
       await for (FileSystemEntity entity in picDir.list()) {
         await entity.delete(recursive: true);
       }
-      print('已清理临时目录: $picDirPath');
     }
   } catch (e) {
     print('清理临时目录时出错: $e');
@@ -67,7 +67,11 @@ class _MyAppState extends State<MyApp> with WindowListener {
   String input_text = "";
 
   void getResults() async {
-    if (input_text != null && input_text.length > 0 && input_text != "" && input_text != " " && input_text.isNotEmpty) {
+    if (input_text != null &&
+        input_text.length > 0 &&
+        input_text != "" &&
+        input_text != " " &&
+        input_text.isNotEmpty) {
       result_items = await getResultItems(
         input_text,
         onDataChange: (data) {
@@ -78,8 +82,7 @@ class _MyAppState extends State<MyApp> with WindowListener {
           });
         },
       );
-    }
-    else{
+    } else {
       result_items = [];
     }
     setState(() {});
@@ -204,30 +207,45 @@ class _MyAppState extends State<MyApp> with WindowListener {
                                       : Row(
                                         key: const ValueKey<bool>(false),
                                         children: [
-                                          IconButton(
-                                            onPressed: () {
-                                              //打开设置
-                                              /*
-                                              Navigator.push(
-                                                context,
-                                                MaterialPageRoute(
-                                                  builder: (context) =>
-                                                      const SettingsPage(),
-                                                ),
-                                              );*/
-                                            },
-                                            icon: const Icon(Icons.settings),
-                                            style: IconButton.styleFrom(
-                                              backgroundColor:
-                                                  const Color.fromARGB(
-                                                    255,
-                                                    47,
-                                                    96,
-                                                    129,
+                                          Builder(
+                                            builder:
+                                                (context) => IconButton(
+                                                  onPressed: () {
+                                                    windowManager.setAlwaysOnTop(false);
+                                                    windowManager.setSize(Size(800, 450));
+                                                    windowManager.setResizable(true);
+                                                    windowManager.setTitleBarStyle(TitleBarStyle.normal);
+                                                    // 打开设置
+                                                    Navigator.push(
+                                                      context,
+                                                      MaterialPageRoute(
+                                                        builder:
+                                                            (context) =>
+                                                                const SettingsPage(),
+                                                                
+                                                      ),
+                                                    ).then((result){
+                                                      windowManager.setSize(Size(WINDOW_WIDTH, 80));
+                                                      windowManager.setResizable(false);
+                                                      windowManager.setAlwaysOnTop(true);
+                                                      windowManager.setAsFrameless();
+                                                    });
+                                                  },
+                                                  icon: const Icon(
+                                                    Icons.settings,
                                                   ),
-                                              splashFactory:
-                                                  NoSplash.splashFactory,
-                                            ),
+                                                  style: IconButton.styleFrom(
+                                                    backgroundColor:
+                                                        const Color.fromARGB(
+                                                          255,
+                                                          47,
+                                                          96,
+                                                          129,
+                                                        ),
+                                                    splashFactory:
+                                                        NoSplash.splashFactory,
+                                                  ),
+                                                ),
                                           ),
                                           const SizedBox(width: 3),
                                           IconButton(
@@ -414,11 +432,11 @@ class _TransparentSearchBoxState extends State<TransparentSearchBox> {
               onSubmitted: widget.onSearchSubmitted,
               //当文字改变
               onChanged: (value) {
-                myAppState!.setState(() {
-                  myAppState!.is_result_show = true;
-                  myAppState!.input_text = value;
+                myAppState.setState(() {
+                  myAppState.is_result_show = true;
+                  myAppState.input_text = value;
                   if (value != "") {
-                    myAppState!.getResults();
+                    myAppState.getResults();
                   }
                 });
               },
