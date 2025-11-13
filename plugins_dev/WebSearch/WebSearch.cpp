@@ -178,7 +178,8 @@ void searchDirectory(const std::string& path, const std::wstring& keyword) {
                 std::cout << "{"
                     << "\"title\":\"" << escapeJsonString(filename) << "\","
                     << "\"content\":\"" << escapeJsonString(fullPath) << "\","
-                    << "\"cmd\":\"" << escapeJsonString(openCmd) << "\""
+                    << "\"cmd\":\"" << escapeJsonString(openCmd) << "\","
+                    << "\"auto_close\":true"
                     << "}\n"
                     << "\nnext_result\n";
             }
@@ -252,7 +253,8 @@ void parseEdgeBookmarks(const std::string& bookmarksPath, const std::wstring& ke
                                 std::cout << ",\"preview_path\":\"" << escapeJsonString(logoUrl) << "\"";
                             }
 
-                            std::cout << "}\n"
+                            std::cout << ",\"auto_close\":true"
+                                << "}\n"
                                 << "\nnext_result\n";
                         }
                     }

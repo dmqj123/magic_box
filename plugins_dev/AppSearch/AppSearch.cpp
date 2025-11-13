@@ -307,7 +307,8 @@ void ScanShortcuts(const wstring& searchPath, const wstring& keyword, set<wstrin
                             wstring json = L"{\"title\":\"" + utf8_converter.from_bytes(escapedAppName) +
                                 L"\",\"content\":\"" + utf8_converter.from_bytes(escapedTargetPath) +
                                 L"\",\"cmd\":\"explorer.exe \\\"" + utf8_converter.from_bytes(escapedTargetPath) + L"\\\"\"" +
-                                L",\"preview_path\":\"" + utf8_converter.from_bytes(escapedIconPath) + L"\"}";
+                                L",\"preview_path\":\"" + utf8_converter.from_bytes(escapedIconPath) + L"\"" +
+                                L",\"auto_close\":true}";
 
                             cout << utf8_converter.to_bytes(json);
                             cout << "\n\nnext_result\n";
@@ -417,7 +418,8 @@ void ScanRegistry(HKEY hKey, const wstring& keyword, set<wstring>& exportedApps,
                             wstring json = L"{\"title\":\"" + utf8_converter.from_bytes(escapedDisplayName) +
                                 L"\",\"content\":\"" + utf8_converter.from_bytes(escapedExePath) +
                                 L"\",\"cmd\":\"explorer.exe \\\"" + utf8_converter.from_bytes(escapedExePath) + L"\\\"\"" +
-                                L",\"preview_path\":\"" + utf8_converter.from_bytes(escapedIconPath) + L"\"}";
+                                L",\"preview_path\":\"" + utf8_converter.from_bytes(escapedIconPath) + L"\"" +
+                                L",\"auto_close\":true}";
 
                             cout << utf8_converter.to_bytes(json);
                             cout << "\n\nnext_result\n";
