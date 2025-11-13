@@ -1,4 +1,4 @@
-﻿#include <Windows.h>
+#include <Windows.h>
 #include <shlobj.h>
 #include <shlwapi.h>
 #include <objbase.h>
@@ -102,75 +102,133 @@ wstring GetIconCacheDir() {
     return iconDir;
 }
 
-// 保存图标到临时文件
+// 保存图标到临时文件(PNG格式)
 wstring SaveIconToTemp(const wstring& filePath, int iconIndex) {
+    // 创建唯一的文件名基于文件路径和索引
+    wstring uniqueId = filePath;
+    for (auto& ch : uniqueId) {
+        if (ch == L'\\' || ch == L'/' || ch == L':' || ch == L'*' || ch == L'?' || ch == L'\"' || ch == L'<' || ch == L'>' || ch == L'|') {
+            ch = L'_';
+        }
+    }
+    
+    wchar_t indexStr[16];
+    swprintf(indexStr, 16, L"_%d", iconIndex);
+    uniqueId += indexStr;
+    
+    wstring iconDir = GetIconCacheDir();
+    wstring pngPath = iconDir + uniqueId + L".png";
+    
+    // 检查文件是否已存在
+    if (PathFileExistsW(pngPath.c_str())) {
+        return pngPath;
+    }
+
+    // 提取最大的图标
+    UINT iconCount = ExtractIconExW(filePath.c_str(), -1, nullptr, nullptr, 0);
+    if (iconCount == 0) return L"";
+
+    // 尝试提取不同尺寸的图标，选择最大的
     HICON hIcon = nullptr;
-    ExtractIconExW(filePath.c_str(), iconIndex, nullptr, &hIcon, 1);
+    int maxIconSize = 0;
+    
+    vector<HICON> icons(iconCount);
+    ExtractIconExW(filePath.c_str(), 0, nullptr, icons.data(), iconCount);
+    
+    for (UINT i = 0; i < iconCount; i++) {
+        if (icons[i]) {
+            ICONINFO iconInfo;
+            if (GetIconInfo(icons[i], &iconInfo)) {
+                BITMAP bmp;
+                GetObject(iconInfo.hbmColor, sizeof(BITMAP), &bmp);
+                
+                int size = max(bmp.bmWidth, bmp.bmHeight);
+                if (size > maxIconSize) {
+                    maxIconSize = size;
+                    if (hIcon) DestroyIcon(hIcon);
+                    hIcon = CopyIcon(icons[i]);
+                }
+                
+                DeleteObject(iconInfo.hbmColor);
+                DeleteObject(iconInfo.hbmMask);
+            }
+        }
+    }
+    
+    // 清理所有图标
+    for (UINT i = 0; i < iconCount; i++) {
+        if (icons[i]) DestroyIcon(icons[i]);
+    }
+    
     if (!hIcon) return L"";
 
-    wstring iconDir = GetIconCacheDir();
-    wchar_t tempFile[MAX_PATH];
-    GetTempFileNameW(iconDir.c_str(), L"ico", 0, tempFile);
-    wstring iconPath = wstring(tempFile) + L".ico";
-    DeleteFileW(iconPath.c_str()); // 删除临时生成的0字节文件
-
-    // 保存为ICO
+    // 将图标转换为PNG格式并保存
+    HDC hdcScreen = GetDC(NULL);
+    HDC hdc = CreateCompatibleDC(hdcScreen);
+    ReleaseDC(NULL, hdcScreen);
+    
     ICONINFO iconInfo;
     if (!GetIconInfo(hIcon, &iconInfo)) {
         DestroyIcon(hIcon);
+        DeleteDC(hdc);
         return L"";
     }
 
-    BITMAP bmpColor;
-    GetObject(iconInfo.hbmColor, sizeof(BITMAP), &bmpColor);
+    BITMAP bmp;
+    GetObject(iconInfo.hbmColor, sizeof(BITMAP), &bmp);
 
-    BITMAPINFOHEADER bmiHeader = { 0 };
-    bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-    bmiHeader.biWidth = bmpColor.bmWidth;
-    bmiHeader.biHeight = bmpColor.bmHeight;
-    bmiHeader.biPlanes = 1;
-    bmiHeader.biBitCount = 32;
-    bmiHeader.biCompression = BI_RGB;
+    // 创建带alpha通道的位图
+    BITMAPINFO bmi = {0};
+    bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+    bmi.bmiHeader.biWidth = bmp.bmWidth;
+    bmi.bmiHeader.biHeight = -bmp.bmHeight; // Top-down DIB
+    bmi.bmiHeader.biPlanes = 1;
+    bmi.bmiHeader.biBitCount = 32;
+    bmi.bmiHeader.biCompression = BI_RGB;
 
-    DWORD bitsSize = bmiHeader.biWidth * bmiHeader.biHeight * 4;
-    vector<BYTE> bits(bitsSize);
-
-    HDC hdc = GetDC(nullptr);
-    GetDIBits(hdc, iconInfo.hbmColor, 0, bmiHeader.biHeight, bits.data(), (BITMAPINFO*)&bmiHeader, DIB_RGB_COLORS);
-    ReleaseDC(nullptr, hdc);
-
-    // 写入ICO文件
-    ofstream fout(iconPath, ios::binary);
-    if (fout) {
-        ICONDIR dir = { 0 };
-        dir.idReserved = 0;
-        dir.idType = 1;
-        dir.idCount = 1;
-        fout.write(reinterpret_cast<const char*>(&dir), sizeof(dir));
-
-        ICONDIRENTRY entry = { 0 };
-        entry.bWidth = static_cast<BYTE>(bmpColor.bmWidth);
-        entry.bHeight = static_cast<BYTE>(bmpColor.bmHeight);
-        entry.bColorCount = 0;
-        entry.bReserved = 0;
-        entry.wPlanes = 1;
-        entry.wBitCount = 32;
-        entry.dwBytesInRes = sizeof(BITMAPINFOHEADER) + bitsSize;
-        entry.dwImageOffset = sizeof(ICONDIR) + sizeof(ICONDIRENTRY);
-        fout.write(reinterpret_cast<const char*>(&entry), sizeof(entry));
-
-        fout.write(reinterpret_cast<const char*>(&bmiHeader), sizeof(bmiHeader));
-        fout.write(reinterpret_cast<const char*>(bits.data()), bitsSize);
-        fout.close();
+    BYTE* pBits = nullptr;
+    HBITMAP hBmp = CreateDIBSection(hdc, &bmi, DIB_RGB_COLORS, (void**)&pBits, NULL, 0);
+    
+    if (!hBmp) {
+        DeleteObject(iconInfo.hbmColor);
+        DeleteObject(iconInfo.hbmMask);
+        DeleteDC(hdc);
+        DestroyIcon(hIcon);
+        return L"";
     }
-    else {
-        iconPath = L"";
+    
+    HGDIOBJ oldObj = SelectObject(hdc, hBmp);
+    
+    // 使用正确的参数绘制图标，包括透明度支持
+    DrawIconEx(hdc, 0, 0, hIcon, bmp.bmWidth, bmp.bmHeight, 0, NULL, DI_NORMAL);
+    
+    // 创建GDI+ bitmap，显式指定像素格式
+    Bitmap* pBitmap = new Bitmap(bmp.bmWidth, bmp.bmHeight, bmi.bmiHeader.biWidth * 4, PixelFormat32bppARGB, pBits);
+    if (pBitmap) {
+        // 保存为PNG
+        CLSID clsid;
+        HRESULT hr = CLSIDFromString(L"{557CF406-1A04-11D3-9A73-0000F81EF32E}", &clsid); // PNG encoder
+        
+        if (SUCCEEDED(hr)) {
+            // 确保目录存在
+            CreateDirectoryW(iconDir.c_str(), nullptr);
+            
+            // 保存图像
+            pBitmap->Save(pngPath.c_str(), &clsid, nullptr);
+        }
+        
+        delete pBitmap;
     }
-
-    DestroyIcon(hIcon);
+    
+    // 清理资源
+    SelectObject(hdc, oldObj);
+    DeleteObject(hBmp);
     DeleteObject(iconInfo.hbmColor);
     DeleteObject(iconInfo.hbmMask);
-    return iconPath;
+    DeleteDC(hdc);
+    DestroyIcon(hIcon);
+    
+    return pngPath;
 }
 
 // 解析快捷方式
@@ -183,13 +241,19 @@ wstring ParseShortcut(const wstring& lnkPath, wstring& iconPath) {
         if (SUCCEEDED(psl->QueryInterface(IID_IPersistFile, (void**)&ppf))) {
             if (SUCCEEDED(ppf->Load(lnkPath.c_str(), STGM_READ))) {
                 wchar_t path[MAX_PATH];
-                int iconIndex;
+                int iconIndex = 0;
                 if (SUCCEEDED(psl->GetPath(path, MAX_PATH, nullptr, 0))) {
                     targetPath = path;
                 }
                 if (SUCCEEDED(psl->GetIconLocation(path, MAX_PATH, &iconIndex))) {
                     if (wcslen(path) > 0) {
                         iconPath = SaveIconToTemp(path, iconIndex);
+                    }
+                }
+                else {
+                    // 如果没有指定图标，则从目标文件提取
+                    if (!targetPath.empty()) {
+                        iconPath = SaveIconToTemp(targetPath, 0);
                     }
                 }
             }
@@ -380,8 +444,8 @@ int wmain(int argc, wchar_t* argv[]) {
     // 设置控制台输出UTF-8
     SetConsoleOutputCP(CP_UTF8);
 
-    // 清理临时文件
-    CleanTempIcons();
+    // 不再每次清理临时文件，而是保持缓存
+    // CleanTempIcons();
 
     // 解析参数
     wstring keyword;
