@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:magic_box/const.dart';
 
 class ResultItemCard extends StatefulWidget {
@@ -12,6 +13,7 @@ class ResultItemCard extends StatefulWidget {
   final String? cmd;
   final String? encoding;
   final bool? autoClose;
+  final FocusNode? focusNode;
 
   const ResultItemCard({
     Key? key,
@@ -23,6 +25,7 @@ class ResultItemCard extends StatefulWidget {
     this.cmd,
     this.encoding,
     this.autoClose,
+    this.focusNode,
   }) : super(key: key);
 
   @override
@@ -32,12 +35,21 @@ class ResultItemCard extends StatefulWidget {
 class _ResultItemCardState extends State<ResultItemCard> {
   late FocusNode _focusNode;
   bool _hasFocus = false;
+  bool _isInternalFocusNode = false;
 
   @override
   void initState() {
     super.initState();
-    _focusNode = FocusNode();
+    if (widget.focusNode != null) {
+      _focusNode = widget.focusNode!;
+      _isInternalFocusNode = false;
+    } else {
+      _focusNode = FocusNode();
+      _isInternalFocusNode = true;
+    }
     _focusNode.addListener(_onFocusChange);
+    // 添加键盘事件监听
+    RawKeyboard.instance.addListener(_handleKeyEvent);
   }
 
   void _onFocusChange() {
@@ -46,10 +58,42 @@ class _ResultItemCardState extends State<ResultItemCard> {
     });
   }
 
+  // 处理键盘事件
+  void _handleKeyEvent(RawKeyEvent event) {
+    if (event is RawKeyDownEvent && _focusNode.hasFocus) {
+      if (event.logicalKey == LogicalKeyboardKey.enter || 
+          event.logicalKey == LogicalKeyboardKey.numpadEnter) {
+        // 触发点击操作
+        _triggerAction();
+      }
+    }
+  }
+
+  // 触发结果项的操作
+  void _triggerAction() {
+    if (widget.onTap != null) {
+      widget.onTap!();
+    }
+    // 执行命令
+    if (widget.cmd != null && widget.cmd!.isNotEmpty) {
+      Process.run('powershell', [widget.cmd!]);
+      
+      // 延迟关闭
+      Future.delayed(Duration(milliseconds: 500), () {
+        if (widget.autoClose == true) {
+          exit(0);
+        }
+      });
+    }
+  }
+
   @override
   void dispose() {
     _focusNode.removeListener(_onFocusChange);
-    _focusNode.dispose();
+    RawKeyboard.instance.removeListener(_handleKeyEvent);
+    if (_isInternalFocusNode) {
+      _focusNode.dispose();
+    }
     super.dispose();
   }
 
@@ -69,19 +113,7 @@ class _ResultItemCardState extends State<ResultItemCard> {
           
         },
         child: InkWell(
-          onTap: () {
-            if (widget.onTap != null) {
-              widget.onTap!();
-            }
-            //Process.run('cmd', ['/C', widget.cmd!]);
-            Process.run('powershell', [widget.cmd!]);
-            
-            Future.delayed(Duration(milliseconds: 500), () {
-              if(widget.autoClose == true){
-                exit(0);
-              }
-            });
-          },
+          onTap: _triggerAction,
           borderRadius: BorderRadius.circular(15.0),
           child: Padding(
             padding: const EdgeInsets.all(6),
