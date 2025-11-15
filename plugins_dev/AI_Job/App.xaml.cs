@@ -61,13 +61,15 @@ namespace AI_Job
                 else
                 {
                     // 无效参数，显示UI窗口
-                    // StartupUri已经在App.xaml中设置为MainWindow.xaml
+                    var mainWindow = new MainWindow();
+                    mainWindow.Show();
                 }
             }
             else
             {
-                // 无参数，显示UI窗口（保持原有行为）
-                // StartupUri已经在App.xaml中设置为MainWindow.xaml
+                // 无参数，显示UI窗口
+                var mainWindow = new MainWindow();
+                mainWindow.Show();
             }
         }
         
