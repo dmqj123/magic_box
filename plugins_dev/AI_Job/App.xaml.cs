@@ -20,21 +20,48 @@ namespace AI_Job
             // 检查是否有命令行参数
             if (e.Args.Length > 0)
             {
-                string aiCommand = string.Join(" ", e.Args);
+                string aiCommand = null;
+                bool showConfig = false;
                 
-                // 检查是否为"配置Ai"参数
-                if (aiCommand == "配置Ai")
+                // 解析命令行参数（参考AppSearch.cpp的参数传递方式）
+                for (int i = 0; i < e.Args.Length; i++)
+                {
+                    string arg = e.Args[i];
+                    
+                    if (arg == "--config" || arg == "-c")
+                    {
+                        showConfig = true;
+                    }
+                    else if ((arg == "-k" || arg == "--keyword") && i + 1 < e.Args.Length)
+                    {
+                        aiCommand = e.Args[i + 1];
+                        i++; // 跳过下一个参数，因为它已经被处理了
+                    }
+                    else if (aiCommand == null && !showConfig)
+                    {
+                        // 兼容旧的直接传递命令的方式
+                        aiCommand = string.Join(" ", e.Args, i, e.Args.Length - i);
+                        break;
+                    }
+                }
+                
+                if (showConfig)
                 {
                     // 显示API配置窗口
                     var configWindow = new ApiKeyConfigWindow();
                     configWindow.ShowDialog();
                     Shutdown();
                 }
-                else
+                else if (aiCommand != null)
                 {
-                    // 有其他参数，执行无界面模式
+                    // 执行无界面模式
                     await ExecuteAiCommandSilent(aiCommand);
                     Shutdown(); // 执行完成后退出
+                }
+                else
+                {
+                    // 无效参数，显示UI窗口
+                    // StartupUri已经在App.xaml中设置为MainWindow.xaml
                 }
             }
             else
