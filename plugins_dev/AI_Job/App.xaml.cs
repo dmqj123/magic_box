@@ -20,10 +20,22 @@ namespace AI_Job
             // 检查是否有命令行参数
             if (e.Args.Length > 0)
             {
-                // 有参数，执行无界面模式
                 string aiCommand = string.Join(" ", e.Args);
-                await ExecuteAiCommandSilent(aiCommand);
-                Shutdown(); // 执行完成后退出
+                
+                // 检查是否为"配置Ai"参数
+                if (aiCommand == "配置Ai")
+                {
+                    // 显示API配置窗口
+                    var configWindow = new ApiKeyConfigWindow();
+                    configWindow.ShowDialog();
+                    Shutdown();
+                }
+                else
+                {
+                    // 有其他参数，执行无界面模式
+                    await ExecuteAiCommandSilent(aiCommand);
+                    Shutdown(); // 执行完成后退出
+                }
             }
             else
             {
