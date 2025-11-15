@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:magic_box/components.dart';
 import 'package:magic_box/service.dart';
 import 'package:magic_box/const.dart';
 import 'package:path_provider/path_provider.dart';
@@ -65,6 +66,17 @@ class _MyAppState extends State<MyApp> with WindowListener {
   bool is_more_spreadout = false;
   bool is_result_show = false;
   String input_text = "";
+  FocusNode? firstResultFocusNode;
+
+  // 处理回车键按下时的焦点跳转
+  void handleEnterPressed() {
+    if (input_text.isNotEmpty && result_items.isNotEmpty) {
+      // 延迟一下确保结果已经显示
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        firstResultFocusNode?.requestFocus();
+      });
+    }
+  }
 
   void getResults() async {
     if (input_text != null &&
@@ -99,6 +111,7 @@ class _MyAppState extends State<MyApp> with WindowListener {
   @override
   void dispose() {
     windowManager.removeListener(this);
+    firstResultFocusNode?.dispose();
     super.dispose();
   }
 
@@ -152,6 +165,8 @@ class _MyAppState extends State<MyApp> with WindowListener {
                                 is_result_show = true;
                                 input_text = value;
                               });
+                              // 在回车键按下时调用焦点跳转
+                              handleEnterPressed();
                             }
                           },
                           onTap: () {
@@ -310,6 +325,14 @@ class _MyAppState extends State<MyApp> with WindowListener {
   }
 
   Widget _build_result_view() {
+    // 创建或更新第一个结果的焦点节点
+    if (result_items.isNotEmpty && firstResultFocusNode == null) {
+      firstResultFocusNode = FocusNode();
+    } else if (result_items.isEmpty && firstResultFocusNode != null) {
+      firstResultFocusNode!.dispose();
+      firstResultFocusNode = null;
+    }
+
     return Container(
       decoration: BoxDecoration(
         color: const Color.fromARGB(232, 107, 107, 107),
@@ -359,7 +382,22 @@ class _MyAppState extends State<MyApp> with WindowListener {
                   if (result_items.length == 0)
                     Text(is_getting_result ? "获取中..." : "暂无结果"),
 
-                  ...result_items,
+                  // 为第一个结果项添加焦点节点
+                  if (result_items.isNotEmpty)
+                    ResultItemCard(
+                      title: result_items[0].title,
+                      content: result_items[0].content,
+                      image_path: result_items[0].image_path,
+                      preview_path: result_items[0].preview_path,
+                      cmd: result_items[0].cmd,
+                      encoding: result_items[0].encoding,
+                      autoClose: result_items[0].autoClose,
+                      focusNode: firstResultFocusNode,
+                      onTap: result_items[0].onTap,
+                    ),
+                  
+                  // 其余结果项
+                  ...result_items.skip(1).toList(),
                 ],
               ),
             ),
