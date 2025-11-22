@@ -2,7 +2,7 @@
 ; 有关创建 Inno Setup 脚本文件的详细资料请查阅帮助文档！
 
 #define MyAppName "MagicBox"
-#define MyAppVersion "1.0.0"
+#define MyAppVersion "1.0.1"
 #define MyAppExeName "magic_box.exe"
 #define SExeName "MagicBoxSearchService.exe"
 
@@ -93,23 +93,47 @@ end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
 var
-  AppDataPath, SourceDir: string;
+  ProgramDataPath, AppDataPath, SourceDir, SourcePluginsDir, SourcePrefFile: string;
 begin
   if CurStep = ssPostInstall then
   begin
-    // 获取AppData路径
-    AppDataPath := ExpandConstant('{userappdata}\com.dmqj\magic_box');
+    // 获取ProgramData路径（用于plugins文件夹）
+    ProgramDataPath := ExpandConstant('{commonappdata}\magic_box');
+    
+    // 获取特定用户的AppData路径（用于shared_preferences.json）
+    // 注意：这里使用了固定的用户名abcdef，实际使用时可能需要根据需求调整
+    AppDataPath := 'C:\Users\abcdef\AppData\Roaming\com.dmqj\magic_box';
     
     // 创建目标目录
+    if not DirExists(ProgramDataPath) then
+      ForceDirectories(ProgramDataPath);
     if not DirExists(AppDataPath) then
       ForceDirectories(AppDataPath);
     
-    // 移动inplug_temp中的内容到AppData目录
+    // 设置源目录和文件路径
     SourceDir := ExpandConstant('{app}\inplug_temp');
+    SourcePluginsDir := SourceDir + '\plugins';
+    SourcePrefFile := SourceDir + '\shared_preferences.json';
+    
     if DirExists(SourceDir) then
     begin
-      // 复制目录内容
-      CopyDirectoryContents(SourceDir, AppDataPath);
+      // 1. 移动plugins文件夹到ProgramData目录
+      if DirExists(SourcePluginsDir) then
+      begin
+        // 确保目标plugins目录存在
+        if not DirExists(ProgramDataPath + '\plugins') then
+          ForceDirectories(ProgramDataPath + '\plugins');
+          
+        // 复制plugins目录内容
+        CopyDirectoryContents(SourcePluginsDir, ProgramDataPath + '\plugins');
+      end;
+      
+      // 2. 移动shared_preferences.json到指定用户的AppData目录
+      if FileExists(SourcePrefFile) then
+      begin
+        if FileCopy(SourcePrefFile, AppDataPath + '\shared_preferences.json', False) then
+          DeleteFile(SourcePrefFile);
+      end;
       
       // 删除临时目录
       DelTree(SourceDir, True, True, True);

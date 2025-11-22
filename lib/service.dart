@@ -185,9 +185,8 @@ Future<void> addPlugin(String package_path) async {
 
       String main_file = config['main_file'];
       //移动到新的目录中
-      final Directory _ApplicationSupportDirectory =
-          await getApplicationSupportDirectory();
-      String new_path = '${_ApplicationSupportDirectory.path}\\plugins\\$name';
+      // 使用固定的 ProgramData 路径而不是应用支持目录
+      String new_path = 'C:\\ProgramData\\magic_box\\plugins\\$name';
       
       if (!Directory(new_path).existsSync()) {
         await Directory(new_path).create(recursive: true);
