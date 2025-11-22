@@ -18,7 +18,8 @@ DefaultDirName={autopf}\{#MyAppName}
 DisableProgramGroupPage=yes
 ; 以下行取消注释，以在非管理安装模式下运行（仅为当前用户安装）。
 ;PrivilegesRequired=lowest
-PrivilegesRequiredOverridesAllowed=dialog
+PrivilegesRequired=admin
+PrivilegesRequiredOverridesAllowed=commandline
 OutputDir=J:\zzx\Code\Flutter\magic_box\release
 OutputBaseFilename=MagicBoxSetup
 SetupIconFile=J:\zzx\Code\Flutter\magic_box\windows\runner\resources\app_icon.ico
@@ -113,5 +114,27 @@ begin
       // 删除临时目录
       DelTree(SourceDir, True, True, True);
     end;
+  end;
+end;
+
+// 结束指定名称的进程
+procedure KillProcess(const ProcessName: string);
+var
+  ResultCode: Integer;
+begin
+  // 使用taskkill命令结束进程，/F表示强制结束，/IM表示按映像名称指定进程
+  Exec('taskkill.exe', '/F /IM ' + ProcessName, '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+end;
+
+// 卸载步骤变更时触发
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+begin
+  // 在卸载开始前结束相关进程
+  if CurUninstallStep = usUninstall then
+  begin
+    // 结束搜索服务进程
+    KillProcess('{#SExeName}');
+    // 结束主程序进程
+    KillProcess('{#MyAppExeName}');
   end;
 end;
