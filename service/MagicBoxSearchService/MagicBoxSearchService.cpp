@@ -35,10 +35,14 @@ std::string GetExeDirectory() {
     return "";
 }
 
-// 检查是否已注册到启动项
-bool IsRegisteredInStartup() {
+// 检查是否已注册到启动项，并验证路径是否正确
+bool IsRegisteredInStartup(bool* pathCorrect = nullptr) {
     HKEY hKey = NULL;
     bool found = false;
+    bool isPathCorrect = false;
+
+    // 获取当前程序的路径
+    std::string currentExePath = GetCurrentExePath();
 
     if (RegOpenKeyExA(HKEY_CURRENT_USER,
         "Software\\Microsoft\\Windows\\CurrentVersion\\Run",
@@ -50,14 +54,22 @@ bool IsRegisteredInStartup() {
         if (RegQueryValueExA(hKey, SERVICE_NAME, NULL, NULL,
             reinterpret_cast<LPBYTE>(valueData), &valueSize) == ERROR_SUCCESS) {
             found = true;
+            
+            // 比较注册表中的路径和当前程序路径是否相同
+            isPathCorrect = (_stricmp(valueData, currentExePath.c_str()) == 0);
         }
         RegCloseKey(hKey);
+    }
+
+    // 如果提供了路径正确性的输出参数，则设置它
+    if (pathCorrect != nullptr) {
+        *pathCorrect = isPathCorrect;
     }
 
     return found;
 }
 
-// 添加到注册表启动项
+// 添加或更新注册表启动项
 bool RegisterInStartup() {
     HKEY hKey = NULL;
     std::string exePath = GetCurrentExePath();
@@ -66,6 +78,7 @@ bool RegisterInStartup() {
         "Software\\Microsoft\\Windows\\CurrentVersion\\Run",
         0, KEY_WRITE, &hKey) == ERROR_SUCCESS) {
 
+        // RegSetValueExA 会自动覆盖已存在的值，实现启动项的添加或更新
         LONG result = RegSetValueExA(hKey,
             SERVICE_NAME,
             0,
@@ -377,8 +390,12 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
         return 0;
     }
 
-    // 检查是否已注册到启动项，如果没有则注册
-    if (!IsRegisteredInStartup()) {
+    // 检查是否已注册到启动项，并验证路径是否正确
+    bool pathCorrect = false;
+    bool isRegistered = IsRegisteredInStartup(&pathCorrect);
+    
+    // 如果未注册或路径不正确，则添加或更新启动项
+    if (!isRegistered || !pathCorrect) {
         RegisterInStartup(); // 注册失败也继续运行
     }
 
