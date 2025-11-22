@@ -32,6 +32,63 @@ Encoding getEncodingByName(String? encodingName) {
 // 默认系统编码
 final Encoding systemEncoding = utf8;
 
+// 计算两个字符串之间的Levenshtein距离
+int _levenshteinDistance(String s1, String s2) {
+  if (s1 == s2) return 0;
+  if (s1.isEmpty) return s2.length;
+  if (s2.isEmpty) return s1.length;
+
+  List<int> v0 = List<int>.generate(s2.length + 1, (i) => i);
+  List<int> v1 = List<int>.filled(s2.length + 1, 0);
+
+  for (int i = 0; i < s1.length; i++) {
+    v1[0] = i + 1;
+    for (int j = 0; j < s2.length; j++) {
+      int cost = (s1[i] == s2[j]) ? 0 : 1;
+      v1[j + 1] = [v0[j + 1] + 1, v1[j] + 1, v0[j] + cost].reduce((a, b) => a < b ? a : b);
+    }
+    List<int> temp = v0;
+    v0 = v1;
+    v1 = temp;
+  }
+
+  return v0[s2.length];
+}
+
+// 计算字符串相似度（0-1之间的值，1表示完全相同）
+double _calculateSimilarity(String query, String text) {
+  if (query.isEmpty || text.isEmpty) return 0.0;
+  
+  // 转换为小写进行比较
+  String lowerQuery = query.toLowerCase();
+  String lowerText = text.toLowerCase();
+  
+  // 1. 精确匹配优先级最高
+  if (lowerText == lowerQuery) {
+    return 1.1; // 给精确匹配一个略高于1.0的值
+  }
+  
+  // 2. 包含匹配的优先级次之
+  if (lowerText.contains(lowerQuery)) {
+    return 1.0;
+  }
+  
+  // 3. 使用Levenshtein距离计算相似度
+  int distance = _levenshteinDistance(lowerQuery, lowerText);
+  int maxLength = lowerQuery.length > lowerText.length ? lowerQuery.length : lowerText.length;
+  
+  // 计算相似度（距离越小，相似度越高）
+  double similarity = 1.0 - (distance.toDouble() / maxLength);
+  
+  return similarity;
+}
+
+// 为ResultItemCard计算与查询字符串的相似度（只考虑标题）
+double _getItemSimilarity(String query, ResultItemCard item) {
+  // 只计算标题相似度
+  return _calculateSimilarity(query, item.title!);
+}
+
 bool is_getting_result = false;
 List<Process> get_result_processes = [];
 List<ResultItemCard> result_items = [];
@@ -296,6 +353,17 @@ Future<List<ResultItemCard>> getResultItems(
           item.icon_path,
           encodingFromJson, // 传递从JSON中获取的编码信息
         );
+        
+        // 在调用onDataChange之前，按相似度对结果进行排序
+        if (results != null && results.isNotEmpty) {
+          results.sort((a, b) {
+            double similarityA = _getItemSimilarity(query, a);
+            double similarityB = _getItemSimilarity(query, b);
+            // 降序排序，相似度高的排在前面
+            return similarityB.compareTo(similarityA);
+          });
+        }
+        
         // 等待进程结束并获取退出码
         final exitCode = await process.exitCode;
         onDataChange?.call(results);
@@ -319,6 +387,17 @@ Future<List<ResultItemCard>> getResultItems(
       result_list.addAll(results);
     }
   }
+  
+  // 对最终的结果列表也进行相似度排序
+  if (result_list.isNotEmpty) {
+    result_list.sort((a, b) {
+      double similarityA = _getItemSimilarity(query, a);
+      double similarityB = _getItemSimilarity(query, b);
+      // 降序排序，相似度高的排在前面
+      return similarityB.compareTo(similarityA);
+    });
+  }
+  
   is_getting_result = false;
   return result_list;
 }
