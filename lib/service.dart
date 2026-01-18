@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
 import 'components.dart';
 import 'class.dart';
+import 'package:magic_box/biplu/ai.dart';
 
 SharedPreferences? sharedPreferences;
 
@@ -55,7 +56,7 @@ int _levenshteinDistance(String s1, String s2) {
   return v0[s2.length];
 }
 
-// 计算字符串相似度（0-1之间的值，1表示完全相同）
+// 计算字符串相似度（0-2之间的值，2表示完全相同）
 double _calculateSimilarity(String query, String text) {
   if (query.isEmpty || text.isEmpty) return 0.0;
   
@@ -65,15 +66,20 @@ double _calculateSimilarity(String query, String text) {
   
   // 1. 精确匹配优先级最高
   if (lowerText == lowerQuery) {
-    return 1.1; // 给精确匹配一个略高于1.0的值
+    return 2.0;
   }
   
   // 2. 包含匹配的优先级次之
   if (lowerText.contains(lowerQuery)) {
-    return 1.0;
+    return 1.5;
   }
   
-  // 3. 使用Levenshtein距离计算相似度
+  // 3. 前缀匹配
+  if (lowerText.startsWith(lowerQuery)) {
+    return 1.2;
+  }
+  
+  // 4. 使用Levenshtein距离计算相似度（只在必要时使用）
   int distance = _levenshteinDistance(lowerQuery, lowerText);
   int maxLength = lowerQuery.length > lowerText.length ? lowerQuery.length : lowerText.length;
   
@@ -93,7 +99,14 @@ bool is_getting_result = false;
 List<Process> get_result_processes = [];
 List<ResultItemCard> result_items = [];
 
+AiAbility aiAbility = AiAbility();
+
 List<Plugin> plugins = [
+  Plugin(
+    name: "Ai",
+    path: "@bi..ai",
+    version: "1.0.0",
+  ),
   //TEST
   /*
   Plugin(
@@ -132,6 +145,9 @@ Future<void> savePlugins() async {
 
 void delPlugin(String name) async {
   final Plugin item = plugins.firstWhere((element) => element.name == name);
+  if(item.path == "@bi..ai" || item.path.startsWith("@")){
+    return;
+  }
   String folder_path = item.path+"\\..";
   //删除插件文件夹
   Directory(folder_path).deleteSync(recursive: true);
@@ -198,7 +214,6 @@ Future<void> addPlugin(String package_path) async {
         Directory('${tempDir.path}/magic_box/pic/$timestamp/'),
         Directory(new_path),
       );
-      //TODO 添加至插件列表中
       //如果plugins中已存在同名插件
       if (plugins.any((element) => element.name == name)) {
         plugins.removeWhere((element) => element.name == name);
@@ -218,7 +233,7 @@ Future<void> addPlugin(String package_path) async {
   }
 }
 
-Future<List<Plugin>> getPlugins() async {
+Future<List<Plugin>> getEnablePlugins() async {
   List<Plugin> _plugins = [];
   sharedPreferences = await SharedPreferences.getInstance();
   List<String>? plugins_str_list = sharedPreferences?.getStringList("plugins");
@@ -229,7 +244,12 @@ Future<List<Plugin>> getPlugins() async {
       _plugins.add(plugin);
     }
   }
-  plugins = _plugins;
+  plugins=[Plugin(
+    name: "Ai",
+    path: "@bi..ai",
+    version: "1.0.0",
+  )];
+  plugins.addAll(_plugins);
   return plugins;
 }
 
@@ -260,22 +280,30 @@ void killAllRunningProcesses() {
       print('终止进程 ${process.pid} 失败: $e');
     }
   }
-  get_result_processes.clear(); // 清空列表
+  get_result_processes.clear();
+  aiAbility.cancelRequest();
 }
 
 Future<List<ResultItemCard>> getResultItems(
   String query, {
   void Function(List<ResultItemCard>?)? onDataChange,
+  bool skipAi = false,
 }) async {
   killAllRunningProcesses();
-  getPlugins();
-
+  getEnablePlugins();
   is_getting_result = true;
 
   List<ResultItemCard> result_list = [];
   List<Future<List<ResultItemCard>?>> get_results_futures = [];
 
   for (Plugin item in plugins) {
+    if(item.path == "@bi..ai"){
+      if (!skipAi) {
+        get_results_futures.add(aiAbility.getAiResults(query));
+        print("Ai插件查询完成");
+      }
+      continue;
+    }
     get_results_futures.add(
       Future<List<ResultItemCard>?>(() async {
         get_result_processes.add(
@@ -353,25 +381,10 @@ Future<List<ResultItemCard>> getResultItems(
           encodingFromJson, // 传递从JSON中获取的编码信息
         );
         
-        // 在调用onDataChange之前，按相似度对结果进行排序
-        if (results != null && results.isNotEmpty) {
-          results.sort((a, b) {
-            double similarityA = _getItemSimilarity(query, a);
-            double similarityB = _getItemSimilarity(query, b);
-            // 降序排序，相似度高的排在前面
-            return similarityB.compareTo(similarityA);
-          });
-        }
-        
         // 等待进程结束并获取退出码
         final exitCode = await process.exitCode;
         onDataChange?.call(results);
         print("${item.name}插件查询完成，退出码：$exitCode");
-        // 将非空的results中的所有项添加到result_list
-        // 移除此处对 result_list 的修改
-        // if (results != null && results.isNotEmpty) {
-        //   result_list.addAll(results);
-        // }
         return results; // 返回当前 Future 获得的结果
       }),
     );
@@ -387,14 +400,29 @@ Future<List<ResultItemCard>> getResultItems(
     }
   }
   
-  // 对最终的结果列表也进行相似度排序
+  // 对最终的结果列表进行相似度排序
   if (result_list.isNotEmpty) {
-    result_list.sort((a, b) {
-      double similarityA = _getItemSimilarity(query, a);
-      double similarityB = _getItemSimilarity(query, b);
-      // 降序排序，相似度高的排在前面
-      return similarityB.compareTo(similarityA);
-    });
+    // 限制参与精确排序的结果数量，避免过多的CPU计算
+    const int maxSortCount = 50;
+    if (result_list.length > maxSortCount) {
+      // 只对前 maxSortCount 个结果进行精确排序
+      var topResults = result_list.take(maxSortCount).toList();
+      topResults.sort((a, b) {
+        double similarityA = _getItemSimilarity(query, a);
+        double similarityB = _getItemSimilarity(query, b);
+        return similarityB.compareTo(similarityA);
+      });
+      
+      // 重新组合结果列表
+      result_list = [...topResults, ...result_list.skip(maxSortCount)];
+    } else {
+      // 结果数量较少，全部排序
+      result_list.sort((a, b) {
+        double similarityA = _getItemSimilarity(query, a);
+        double similarityB = _getItemSimilarity(query, b);
+        return similarityB.compareTo(similarityA);
+      });
+    }
   }
   
   is_getting_result = false;

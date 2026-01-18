@@ -3,6 +3,7 @@ import 'package:magic_box/class.dart' show Plugin;
 import 'package:magic_box/service.dart';
 import 'package:magic_box/settings.dart';
 import 'package:magic_box/pages/plugin_manager_page.dart';
+import 'package:magic_box/pages/ai_settings_page.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -32,6 +33,22 @@ class _SettingsPageState extends State<SettingsPage> {
             subtitle: Text(Settings.global_shortcut ?? '未设置'),
             onTap: () {
               // TODO: 实现快捷键设置
+            },
+          ),
+          const Divider(),
+          // AI配置
+          ListTile(
+            leading: const Icon(Icons.smart_toy),
+            title: const Text('AI配置'),
+            subtitle: const Text('配置AI API信息'),
+            trailing: const Icon(Icons.arrow_forward_ios),
+            onTap: () async {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const AiSettingsPage(),
+                ),
+              );
             },
           ),
           const Divider(),

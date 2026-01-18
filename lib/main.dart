@@ -1,11 +1,14 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:magic_box/components.dart';
+import 'package:magic_box/pages/ai_settings_page.dart' show AiSettingsPage;
 import 'package:magic_box/service.dart';
 import 'package:magic_box/const.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:magic_box/pages/settings_page.dart';
+import 'package:magic_box/biplu/ai.dart';
 
 import 'package:window_manager/window_manager.dart';
 
@@ -50,6 +53,9 @@ void main() async {
     windowManager.setResizable(false);
   });
 
+  // 加载AI配置
+  await loadAiInfo();
+
   runApp(const MyApp());
 }
 
@@ -67,6 +73,10 @@ class _MyAppState extends State<MyApp> with WindowListener {
   bool is_result_show = false;
   String input_text = "";
   FocusNode? firstResultFocusNode;
+  final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
+  DateTime? _lastTextChangeTime;
+  Timer? _aiDelayTimer;
 
   // 处理回车键按下时的焦点跳转
   void handleEnterPressed() {
@@ -100,6 +110,43 @@ class _MyAppState extends State<MyApp> with WindowListener {
     setState(() {});
   }
 
+  void getResultsWithoutAi() async {
+    if (input_text != null &&
+        input_text.length > 0 &&
+        input_text != "" &&
+        input_text != " " &&
+        input_text.isNotEmpty) {
+      result_items = await getResultItems(
+        input_text,
+        onDataChange: (data) {
+          setState(() {
+            if (data != null) {
+              result_items = data;
+            }
+          });
+        },
+        skipAi: true,
+      );
+    } else {
+      result_items = [];
+    }
+    setState(() {});
+  }
+
+  void _scheduleAiCall() {
+    _aiDelayTimer?.cancel();
+    _aiDelayTimer = Timer(const Duration(milliseconds: 500), () {
+      getResults();
+    });
+  }
+
+  void navigateToAiSettings() {
+    windowManager.setSize(Size(WINDOW_WIDTH, 400));
+    navigatorKey.currentState?.push(
+      MaterialPageRoute(builder: (context) => const AiSettingsPage()),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -112,6 +159,7 @@ class _MyAppState extends State<MyApp> with WindowListener {
   void dispose() {
     windowManager.removeListener(this);
     firstResultFocusNode?.dispose();
+    _aiDelayTimer?.cancel();
     super.dispose();
   }
 
@@ -143,6 +191,7 @@ class _MyAppState extends State<MyApp> with WindowListener {
     }
     return MaterialApp(
       debugShowCheckedModeBanner: false,
+      navigatorKey: navigatorKey,
       theme: ThemeData.dark(), // 使用暗色主题更易看清透明效果
       home: Scaffold(
         backgroundColor: Colors.transparent, // 设置Scaffold背景透明
@@ -474,7 +523,9 @@ class _TransparentSearchBoxState extends State<TransparentSearchBox> {
                   myAppState.is_result_show = true;
                   myAppState.input_text = value;
                   if (value != "") {
-                    myAppState.getResults();
+                    myAppState._lastTextChangeTime = DateTime.now();
+                    myAppState.getResultsWithoutAi();
+                    myAppState._scheduleAiCall();
                   }
                 });
               },

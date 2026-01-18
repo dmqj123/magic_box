@@ -13,7 +13,7 @@ class _PluginManagerPageState extends State<PluginManagerPage> {
   Future<List<Plugin>>? _pluginsFuture;
 
   Future<List<Plugin>> _getplugins() async {
-    return await getPlugins();
+    return await getEnablePlugins();
   }
 
   @override
