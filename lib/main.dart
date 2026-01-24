@@ -135,7 +135,7 @@ class _MyAppState extends State<MyApp> with WindowListener {
 
   void _scheduleAiCall() {
     _aiDelayTimer?.cancel();
-    _aiDelayTimer = Timer(const Duration(milliseconds: 500), () {
+    _aiDelayTimer = Timer(const Duration(milliseconds: 800), () {
       getResults();
     });
   }

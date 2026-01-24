@@ -57,6 +57,28 @@ class _PluginManagerPageState extends State<PluginManagerPage> {
                     ),
                     trailing: IconButton(
                       onPressed: () {
+                        //如果是Ai插件，则不能删除
+                        if(plugin.path == "@bi..ai" || plugin.path.startsWith("@")){
+                          //弹出消息
+                          showDialog(
+                            context: context,
+                            builder: (BuildContext context) {
+                              return AlertDialog(
+                                title: Text('提示'),
+                                content: Text('该插件不能删除'),
+                                actions: <Widget>[
+                                  TextButton(
+                                    child: Text('确定'),
+                                    onPressed: () {
+                                      Navigator.of(context).pop();
+                                    },
+                                  ),
+                                ],
+                              );
+                            },
+                          );
+                          return;
+                        }
                         try {
                           delPlugin(plugin.name);
                           setState(() {

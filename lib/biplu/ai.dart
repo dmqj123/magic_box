@@ -39,6 +39,9 @@ class AiAbility {
 
     try {
       print('调用AI API: $query');
+      if (query.length >= 900) {
+        return null;
+      }
       final url = Uri.parse('${aiInfo.api_url}/chat/completions');
 
       final response = await _httpClient.post(
