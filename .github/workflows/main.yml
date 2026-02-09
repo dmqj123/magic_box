@@ -1,0 +1,14 @@
+name: Publish to WinGet
+on:
+  release:
+    types: [released]
+jobs:
+  publish:
+    runs-on: windows-latest
+    steps:
+      - name: Publish X to WinGet
+        uses: vedantmgoyal9/winget-releaser@main
+        with:
+          identifier: CodeMiracle.MagicBox
+          installers-regex: '\.exe$' # Only .exe files
+          token: ${{ secrets.WINGET_TOKEN }}
