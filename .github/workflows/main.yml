@@ -3,6 +3,11 @@ on:
   release:
     types: [released]
   workflow_dispatch:
+    inputs:
+      release-tag:
+        description: '要发布的Release标签（例如 v1.0.0）'
+        required: true   # 设为必填，避免空值
+        default: ''
 jobs:
   publish:
     runs-on: windows-latest
