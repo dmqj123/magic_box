@@ -1,0 +1,56 @@
+name: Publish to WinGet
+on:
+  release:
+    types: [released]          # 发布Release时自动触发
+  workflow_dispatch:
+    inputs:
+      release-tag:
+        description: '要发布的Release标签（例如 v1.0.0），留空则自动使用最新Release'
+        required: false
+        default: ''
+
+jobs:
+  publish:
+    runs-on: windows-latest
+    outputs:
+      release_tag: ${{ steps.get_tag.outputs.release_tag }}
+    steps:
+      # 步骤1：确定要使用的Release标签
+      - name: Determine release tag
+        id: get_tag
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # 使用内置token调用API
+        run: |
+          if ("${{ github.event_name }}" -eq "release") {
+            # Release事件：直接使用事件中的标签
+            $tag = "${{ github.event.release.tag_name }}"
+            Write-Output "Using tag from release event: $tag"
+          } else {
+            # 手动触发：检查是否输入了标签
+            $inputTag = "${{ github.event.inputs.release-tag }}"
+            if ($inputTag -ne "") {
+              $tag = $inputTag
+              Write-Output "Using manually specified tag: $tag"
+            } else {
+              # 未输入标签：调用GitHub API获取最新Release的标签
+              Write-Output "No tag specified, fetching latest release..."
+              $releases = Invoke-RestMethod -Uri "https://api.github.com/repos/${{ github.repository }}/releases" -Headers @{ Authorization = "token $env:GITHUB_TOKEN" }
+              if ($releases.Count -eq 0) {
+                Write-Error "No releases found in repository."
+                exit 1
+              }
+              $tag = $releases[0].tag_name
+              Write-Output "Latest release tag: $tag"
+            }
+          }
+          # 输出标签供后续步骤使用
+          Write-Output "release_tag=$tag" >> $env:GITHUB_OUTPUT
+
+      # 步骤2：发布到 WinGet
+      - name: Publish to WinGet
+        uses: vedantmgoyal9/winget-releaser@main
+        with:
+          identifier: CodeMiracle.MagicBox
+          installers-regex: '\.exe$'
+          release-tag: ${{ steps.get_tag.outputs.release_tag }}   # 使用上面确定的标签
+          token: ${{ secrets.WINGET_TOKEN }}
